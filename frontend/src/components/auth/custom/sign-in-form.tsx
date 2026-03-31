@@ -134,7 +134,7 @@ export function SignInForm({ variant = "full", callbackUrl = null }: SignInFormP
 			name="email"
 			render={({ field }) => (
 				<FormControl error={Boolean(errors.email)}>
-					<InputLabel>Email address</InputLabel>
+					<InputLabel>Email</InputLabel>
 					<OutlinedInput {...field} autoComplete="email" type="email" />
 					{errors.email ? <FormHelperText>{errors.email.message}</FormHelperText> : null}
 				</FormControl>
@@ -148,7 +148,7 @@ export function SignInForm({ variant = "full", callbackUrl = null }: SignInFormP
 			name="password"
 			render={({ field }) => (
 				<FormControl error={Boolean(errors.password)}>
-					<InputLabel>Password</InputLabel>
+					<InputLabel>Mật khẩu</InputLabel>
 					<OutlinedInput
 						{...field}
 						autoComplete="current-password"
@@ -170,14 +170,14 @@ export function SignInForm({ variant = "full", callbackUrl = null }: SignInFormP
 					</Box>
 				</div>
 				<Card>
-					<CardHeader
-						subheader={
-							<Typography color="text.secondary" variant="body2">
-								Sign in to access the logistics hub.
-							</Typography>
-						}
-						title="Sign in"
-					/>
+					{/* <CardHeader
+						// subheader={
+						// 	<Typography color="text.secondary" variant="body2">
+						// 		Sign in to access the logistics hub.
+						// 	</Typography>
+						// }
+						title="Đăng nhập"
+					/> */}
 					<CardContent>
 						<form onSubmit={handleSubmit(onSubmit)}>
 							<Stack spacing={2}>
@@ -185,18 +185,18 @@ export function SignInForm({ variant = "full", callbackUrl = null }: SignInFormP
 								{passwordField}
 								{errors.root ? <Alert color="error">{errors.root.message}</Alert> : null}
 								<Button disabled={isPending} type="submit" variant="contained">
-									Sign in
+									Đăng nhập
 								</Button>
 							</Stack>
 						</form>
 						<Box sx={{ mt: 2 }}>
 							<Link component={RouterLink} href={paths.forgotPassword} variant="subtitle2">
-								Forgot password?
+								Quên mật khẩu?
 							</Link>
 						</Box>
 					</CardContent>
 				</Card>
-			</Stack>
+			</Stack >
 		);
 	}
 
@@ -208,11 +208,11 @@ export function SignInForm({ variant = "full", callbackUrl = null }: SignInFormP
 				</Box>
 			</div>
 			<Stack spacing={1}>
-				<Typography variant="h5">Sign in</Typography>
+				<Typography variant="h5">Đăng nhập</Typography>
 				<Typography color="text.secondary" variant="body2">
 					Don&apos;t have an account?{" "}
 					<Link component={RouterLink} href={paths.auth.custom.signUp} variant="subtitle2">
-						Sign up
+						Đăng ký
 					</Link>
 				</Typography>
 			</Stack>
@@ -245,13 +245,13 @@ export function SignInForm({ variant = "full", callbackUrl = null }: SignInFormP
 							{passwordField}
 							{errors.root ? <Alert color="error">{errors.root.message}</Alert> : null}
 							<Button disabled={isPending} type="submit" variant="contained">
-								Sign in
+								Đăng nhập
 							</Button>
 						</Stack>
 					</form>
 					<div>
 						<Link component={RouterLink} href={paths.auth.custom.resetPassword} variant="subtitle2">
-							Forgot password?
+							Quên mật khẩu?
 						</Link>
 					</div>
 				</Stack>

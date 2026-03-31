@@ -8,8 +8,8 @@ export const MuiTableHead = {
 		root: {
 			[`& .${tableCellClasses.root}`]: {
 				backgroundColor: "var(--mui-palette-background-level1)",
-				color: "var(--mui-palette-text-secondary)",
-				lineHeight: 1,
+				// Không set `color` ở đây: selector con có specificity cao hơn `sx` trên TableCell,
+				// khiến style header (đậm, màu đậm) từ từng bảng không có hiệu lực.
 			},
 		},
 	},

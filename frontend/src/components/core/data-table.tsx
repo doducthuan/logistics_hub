@@ -8,6 +8,8 @@ import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import { tableCellClasses } from "@mui/material/TableCell";
+import type { SxProps, Theme } from "@mui/material/styles";
 
 export interface ColumnDef<TRowModel> {
 	align?: "left" | "right" | "center";
@@ -22,6 +24,8 @@ type RowId = number | string;
 
 export interface DataTableProps<TRowModel> extends Omit<TableProps, "onClick"> {
 	columns: ColumnDef<TRowModel>[];
+	/** Styles merged into each header `TableCell` (e.g. bold, larger label text). */
+	headCellSx?: SxProps<Theme>;
 	hideHead?: boolean;
 	hover?: boolean;
 	onClick?: (event: React.MouseEvent, row: TRowModel) => void;
@@ -45,6 +49,7 @@ export function DataTable<TRowModel extends object & { id?: RowId | null }>({
 	onSelectOne,
 	onSelectAll,
 	rows,
+	headCellSx,
 	selectable,
 	selected,
 	uniqueRowId,
@@ -76,12 +81,21 @@ export function DataTable<TRowModel extends object & { id?: RowId | null }>({
 						(column): React.JSX.Element => (
 							<TableCell
 								key={column.name}
-								sx={{
-									width: column.width,
-									minWidth: column.width,
-									maxWidth: column.width,
-									...(column.align && { textAlign: column.align }),
-								}}
+								sx={[
+									{
+										width: column.width,
+										minWidth: column.width,
+										maxWidth: column.width,
+										...(column.align && { textAlign: column.align }),
+									},
+									headCellSx
+										? (theme) => ({
+												// Cùng specificity với theme; gắn vào variant head để rõ ràng
+												[`&.${tableCellClasses.head}`]:
+													typeof headCellSx === "function" ? headCellSx(theme) : headCellSx,
+											})
+										: {},
+								]}
 							>
 								{column.hideName ? null : column.name}
 							</TableCell>

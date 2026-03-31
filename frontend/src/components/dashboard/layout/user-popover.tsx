@@ -44,7 +44,7 @@ function SignOutButton(): React.JSX.Element {
 
 	return (
 		<MenuItem component="a" href={signOutUrl} sx={{ justifyContent: "center" }}>
-			Sign out
+			Đăng xuất
 		</MenuItem>
 	);
 }

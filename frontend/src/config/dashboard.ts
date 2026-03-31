@@ -40,6 +40,13 @@ export const dashboardConfig = {
 					matcher: { type: "startsWith", href: "/dashboard/settings" },
 				},
 				{
+					key: "accounts",
+					title: "Tài khoản hệ thống",
+					href: paths.dashboard.accounts.list,
+					icon: "users",
+					matcher: { type: "startsWith", href: "/dashboard/accounts" },
+				},
+				{
 					key: "customers",
 					title: "Customers",
 					icon: "users",

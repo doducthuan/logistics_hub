@@ -198,21 +198,23 @@ def test_create_account_existing_email(
     assert "_id" not in created
 
 
-def test_admin_create_l2_requires_parent_id(
+def test_admin_create_always_resolves_to_level1_under_parent(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
+    """Admin creates User level 1; client role in body is ignored (server assigns L1)."""
     r = client.post(
         f"{settings.API_V1_STR}/accounts/",
         headers=superuser_token_headers,
         json={
             "email": random_email(),
             "password": random_lower_string(),
-            "full_name": "L2",
+            "full_name": "From admin",
             "role": AccountRole.user_level_2.value,
         },
     )
-    assert r.status_code == 400
-    assert "parent_id" in r.json()["detail"].lower()
+    assert r.status_code == 200
+    created = r.json()
+    assert created["role"] == AccountRole.user_level_1.value
 
 
 def test_l1_create_l2_without_parent_id_uses_self(
@@ -242,6 +244,43 @@ def test_l1_create_l2_without_parent_id_uses_self(
     created = crud.get_account_by_email(session=db, email=child_email)
     assert created is not None
     assert created.parent_id == l1.id
+
+
+def test_l1_list_accounts_includes_created_level2_children(
+    client: TestClient, db: Session
+) -> None:
+    """Regression: L1 must see direct children (L2) when listing with parent_id=self."""
+    l1_email = random_email()
+    l1_password = random_lower_string()
+    l1 = _create_l1(db, l1_email, l1_password)
+    r = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": l1_email, "password": l1_password},
+    )
+    headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
+    child_email = random_email()
+    resp = client.post(
+        f"{settings.API_V1_STR}/accounts/",
+        headers=headers,
+        json={
+            "email": child_email,
+            "password": random_lower_string(),
+            "full_name": "Child Listed",
+            "role": AccountRole.user_level_2.value,
+        },
+    )
+    assert resp.status_code == 200
+
+    list_r = client.get(
+        f"{settings.API_V1_STR}/accounts/",
+        headers=headers,
+        params={"parent_id": str(l1.id)},
+    )
+    assert list_r.status_code == 200
+    payload = list_r.json()
+    emails = {item["email"] for item in payload["data"]}
+    assert child_email in emails
+    assert payload["count"] >= 1
 
 
 def test_create_account_by_level2_forbidden(
@@ -283,6 +322,34 @@ def test_create_account_by_level2_forbidden(
     assert r.status_code == 403
 
 
+def test_list_accounts_forbidden_for_level2(
+    client: TestClient, db: Session
+) -> None:
+    """User cấp 2 không được gọi GET /accounts/ (danh sách quản trị)."""
+    admin = _admin(db)
+    l1 = _create_l1(db, random_email(), random_lower_string())
+    l2_password = random_lower_string()
+    l2_in = AccountCreate(
+        email=random_email(),
+        password=l2_password,
+        full_name="L2 list",
+        phone=None,
+        description=None,
+        role=AccountRole.user_level_2,
+        parent_id=l1.id,
+    )
+    crud.create_account(
+        session=db, account_create=l2_in, created_by_id=admin.id
+    )
+    login_data = {"username": l2_in.email, "password": l2_password}
+    r = client.post(f"{settings.API_V1_STR}/login/access-token", data=login_data)
+    headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+    r = client.get(f"{settings.API_V1_STR}/accounts/", headers=headers)
+    assert r.status_code == 403
+    assert r.json()["detail"] == "User level 2 cannot access the accounts list"
+
+
 def test_retrieve_accounts(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:
@@ -298,6 +365,36 @@ def test_retrieve_accounts(
     assert "count" in all_accounts
     for item in all_accounts["data"]:
         assert "email" in item
+
+
+def test_admin_list_direct_children_only_level1_not_level2(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    """BFF gửi parent_id=admin: chỉ User cấp 1 do admin tạo, không có User cấp 2 (con của L1)."""
+    admin = _admin(db)
+    l1 = _create_l1(db, random_email(), random_lower_string())
+    l2_email = random_email()
+    l2_in = AccountCreate(
+        email=l2_email,
+        password=random_lower_string(),
+        full_name="L2 under L1",
+        phone=None,
+        description=None,
+        role=AccountRole.user_level_2,
+        parent_id=l1.id,
+    )
+    crud.create_account(session=db, account_create=l2_in, created_by_id=admin.id)
+
+    r = client.get(
+        f"{settings.API_V1_STR}/accounts/",
+        headers=superuser_token_headers,
+        params={"parent_id": str(admin.id)},
+    )
+    assert r.status_code == 200
+    payload = r.json()
+    emails = {row["email"] for row in payload["data"]}
+    assert l1.email in emails
+    assert l2_email not in emails
 
 
 def test_update_account_me(
@@ -488,6 +585,38 @@ def test_update_account(
     db.refresh(user_db)
     assert user_db
     assert user_db.full_name == "Updated_full_name"
+
+
+def test_l1_can_toggle_active_for_direct_l2_child(client: TestClient, db: Session) -> None:
+    l1_email = random_email()
+    l1_password = random_lower_string()
+    l1 = _create_l1(db, l1_email, l1_password)
+    l2 = crud.create_account(
+        session=db,
+        account_create=AccountCreate(
+            email=random_email(),
+            password=random_lower_string(),
+            full_name="L2",
+            phone=None,
+            description=None,
+            role=AccountRole.user_level_2,
+            parent_id=l1.id,
+        ),
+        created_by_id=l1.id,
+    )
+    login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": l1_email, "password": l1_password},
+    )
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    r = client.patch(
+        f"{settings.API_V1_STR}/accounts/{l2.id}",
+        headers=headers,
+        json={"is_active": False},
+    )
+    assert r.status_code == 200
+    assert r.json()["is_active"] is False
 
 
 def test_update_account_not_exists(

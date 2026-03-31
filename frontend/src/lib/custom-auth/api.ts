@@ -2,7 +2,7 @@
  * Backend API helpers for custom auth (no "server-only" — safe for Edge middleware).
  */
 
-import type { User } from "./types";
+import type { AccountRole, User } from "./types";
 
 export interface AccountPublicResponse {
 	id: string;
@@ -31,9 +31,9 @@ function formatErrorDetail(detail: unknown): string {
 			)
 			.filter(Boolean)
 			.join(", ");
-		return s || "Incorrect email or password";
+		return s || "Email hoặc mật khẩu không chính xác";
 	}
-	return "Incorrect email or password";
+	return "Email hoặc mật khẩu không chính xác";
 }
 
 export function getApiBaseUrl(): string {
@@ -57,6 +57,7 @@ export function mapAccountToUser(account: AccountPublicResponse): User {
 		firstName,
 		lastName,
 		avatar: "",
+		role: account.role as AccountRole,
 	};
 }
 

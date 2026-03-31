@@ -31,9 +31,9 @@ def login_access_token(
         session=session, email=form_data.username, password=form_data.password
     )
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
+        raise HTTPException(status_code=400, detail="Email hoặc mật khẩu không chính xác")
     elif not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive account")
+        raise HTTPException(status_code=400, detail="Tài khoản không hoạt động")
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     user.last_login_at = datetime.now(timezone.utc)
     session.add(user)

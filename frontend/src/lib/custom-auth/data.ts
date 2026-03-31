@@ -7,4 +7,5 @@ export const user = {
 	lastName: "Rivers",
 	fullName: "Sofia Rivers",
 	email: "sofia@devias.io",
+	role: "admin",
 } satisfies User;

@@ -122,6 +122,9 @@ importers:
       i18next:
         specifier: 25.2.1
         version: 25.2.1(typescript@5.8.3)
+      jose:
+        specifier: ^6.2.2
+        version: 6.2.2
       mapbox-gl:
         specifier: 3.12.0
         version: 3.12.0
@@ -3384,8 +3387,8 @@ packages:
   jose@5.10.0:
     resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
 
-  jose@6.0.11:
-    resolution: {integrity: sha512-QxG7EaliDARm1O1S8BGakqncGT9s25bKL1WSf6/oa17Tkqwi8D2ZNglqCF+DsYF88/rV66Q/Q2mFAy697E1DUg==}
+  jose@6.2.2:
+    resolution: {integrity: sha512-d7kPDd34KO/YnzaDOlikGpOurfF0ByC2sEV4cANCtdqLlTfBlw2p14O/5d/zv40gJPbIQxfES3nSx1/oYNyuZQ==}
 
   js-cookie@3.0.5:
     resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==}
@@ -8569,7 +8572,7 @@ snapshots:
 
   jose@5.10.0: {}
 
-  jose@6.0.11: {}
+  jose@6.2.2: {}
 
   js-cookie@3.0.5: {}
 
@@ -9144,7 +9147,7 @@ snapshots:
 
   openid-client@6.5.1:
     dependencies:
-      jose: 6.0.11
+      jose: 6.2.2
       oauth4webapi: 3.5.2
 
   optionator@0.9.4:

@@ -74,6 +74,9 @@ export const paths = {
 			thread: (threadType: string, threadId: string) => `/dashboard/chat/${threadType}/${threadId}`,
 		},
 		crypto: "/dashboard/crypto",
+		accounts: {
+			list: "/dashboard/accounts",
+		},
 		customers: {
 			list: "/dashboard/customers",
 			create: "/dashboard/customers/create",

@@ -59,11 +59,11 @@ def create_account(
         parent=parent,
     )
     if get_account_by_email(session=session, email=account_create.email):
-        raise ValueError("The account with this email already exists in the system")
+        raise ValueError("Tài khoản với email này đã tồn tại trong hệ thống.")
     if account_create.phone and get_account_by_phone(
         session=session, phone=account_create.phone
     ):
-        raise ValueError("The account with this phone number already exists in the system")
+        raise ValueError("Tài khoản với số điện thoại này đã tồn tại trong hệ thống.")
 
     payload = account_create.model_dump()
     payload.pop("password")

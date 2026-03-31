@@ -4,8 +4,10 @@ import * as React from "react";
 import Box from "@mui/material/Box";
 import GlobalStyles from "@mui/material/GlobalStyles";
 
+import { useAuth } from "@/components/auth/custom/auth-context";
 import { dashboardConfig } from "@/config/dashboard";
 import { useSettings } from "@/components/core/settings/settings-context";
+import { filterDashboardNavItemsForRole } from "@/lib/dashboard-nav";
 
 import { MainNav } from "./main-nav";
 import { SideNav } from "./side-nav";
@@ -16,8 +18,13 @@ export interface VerticalLayoutProps {
 
 export function VerticalLayout({ children }: VerticalLayoutProps): React.JSX.Element {
 	const { settings } = useSettings();
+	const { user } = useAuth();
 
 	const navColor = settings.dashboardNavColor ?? dashboardConfig.navColor;
+	const navItems = React.useMemo(
+		() => filterDashboardNavItemsForRole(dashboardConfig.navItems, user?.role),
+		[user?.role],
+	);
 
 	return (
 		<React.Fragment>
@@ -42,9 +49,9 @@ export function VerticalLayout({ children }: VerticalLayoutProps): React.JSX.Ele
 					minHeight: "100%",
 				}}
 			>
-				<SideNav color={navColor} items={dashboardConfig.navItems} />
+				<SideNav color={navColor} items={navItems} />
 				<Box sx={{ display: "flex", flex: "1 1 auto", flexDirection: "column", pl: { lg: "var(--SideNav-width)" } }}>
-					<MainNav items={dashboardConfig.navItems} />
+					<MainNav items={navItems} />
 					<Box
 						component="main"
 						sx={{

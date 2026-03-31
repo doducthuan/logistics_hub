@@ -44,7 +44,7 @@ export function Modal6(): React.JSX.Element {
 				<Divider />
 				<Box sx={{ p: 1 }}>
 					<MenuItem component="div" sx={{ justifyContent: "center" }}>
-						Sign out
+						Đăng xuất
 					</MenuItem>
 				</Box>
 			</Paper>

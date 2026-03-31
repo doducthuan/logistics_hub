@@ -103,46 +103,41 @@ def _resolve_parent_id_for_create(
 def read_accounts(
     session: SessionDep,
     current_account: CurrentAccount,
+    parent_id: uuid.UUID | None = None,
+    keyword: str | None = None,
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    if current_account.role == AccountRole.admin:
-        count_statement = select(func.count()).select_from(Account)
-        count = session.exec(count_statement).one()
-        statement = (
-            select(Account)
-            .order_by(col(Account.created_at).desc())
-            .offset(skip)
-            .limit(limit)
+    if current_account.role == AccountRole.user_level_2:
+        raise HTTPException(
+            status_code=403,
+            detail="User level 2 cannot access the accounts list",
         )
-    elif current_account.role == AccountRole.user_level_1:
-        scope = or_(
-            Account.id == current_account.id,
-            Account.parent_id == current_account.id,
-        )
-        count_statement = select(func.count()).select_from(Account).where(scope)
-        count = session.exec(count_statement).one()
-        statement = (
-            select(Account)
-            .where(scope)
-            .order_by(col(Account.created_at).desc())
-            .offset(skip)
-            .limit(limit)
-        )
-    else:
-        count_statement = (
-            select(func.count())
-            .select_from(Account)
-            .where(Account.id == current_account.id)
-        )
-        count = session.exec(count_statement).one()
-        statement = (
-            select(Account)
-            .where(Account.id == current_account.id)
-            .order_by(col(Account.created_at).desc())
-            .offset(skip)
-            .limit(limit)
-        )
+
+    if current_account.role in (AccountRole.admin, AccountRole.user_level_1):
+        # Admin chỉ tạo User cấp 1 → chỉ hiển thị các tài khoản có parent_id = admin.
+        # User cấp 1 chỉ tạo User cấp 2 → chỉ hiển thị các tài khoản có parent_id = L1.
+        # Không gộp cháu (L2 của L1) vào danh sách của admin.
+        statement = select(Account).where(Account.parent_id == current_account.id)
+        if parent_id is not None:
+            statement = statement.where(Account.parent_id == parent_id)
+
+    if keyword:
+        search = f"%{keyword.strip()}%"
+        if search != "%%":
+            statement = statement.where(
+                or_(
+                    Account.full_name.ilike(search),
+                    Account.email.ilike(search),
+                    Account.phone.ilike(search),
+                    Account.description.ilike(search),
+                )
+            )
+
+    count_statement = select(func.count()).select_from(statement.subquery())
+    count = session.exec(count_statement).one()
+
+    statement = statement.order_by(col(Account.created_at).desc()).offset(skip).limit(limit)
 
     accounts = session.exec(statement).all()
     return AccountsPublic(data=accounts, count=count)
@@ -155,19 +150,19 @@ def create_account(
     current_account: CurrentAccount,
     account_in: AccountCreate,
 ) -> Any:
-    if account_in.role == AccountRole.admin:
-        raise HTTPException(
-            status_code=400,
-            detail="Creating admin accounts through this endpoint is not allowed",
-        )
-    if not _can_create_role(current_account, account_in.role):
+    if current_account.role == AccountRole.admin:
+        resolved_role = AccountRole.user_level_1
+    elif current_account.role == AccountRole.user_level_1:
+        resolved_role = AccountRole.user_level_2
+    else:
         raise HTTPException(status_code=403, detail="Not enough permissions")
 
-    parent_id = _resolve_parent_id_for_create(
-        current_account=current_account,
-        account_in=account_in,
+    resolved_in = account_in.model_copy(
+        update={
+            "role": resolved_role,
+            "parent_id": current_account.id,
+        }
     )
-    resolved_in = account_in.model_copy(update={"parent_id": parent_id})
 
     try:
         account = crud.create_account(
@@ -316,10 +311,19 @@ def update_account(
             status_code=404,
             detail="The account with this id does not exist in the system",
         )
-    if account_in.is_active is not None and current_account.role != AccountRole.admin:
-        raise HTTPException(
-            status_code=403, detail="Only admin can change active status"
-        )
+    if account_in.is_active is not None:
+        can_update_active = current_account.role == AccountRole.admin
+        if (
+            current_account.role == AccountRole.user_level_1
+            and db_account.role == AccountRole.user_level_2
+            and db_account.parent_id == current_account.id
+        ):
+            can_update_active = True
+        if not can_update_active:
+            raise HTTPException(
+                status_code=403,
+                detail="Only admin or direct manager can change active status",
+            )
     if current_account.role != AccountRole.admin:
         if account_in.role is not None and account_in.role != db_account.role:
             raise HTTPException(status_code=403, detail="Not enough permissions")
