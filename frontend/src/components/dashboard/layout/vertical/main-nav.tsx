@@ -6,6 +6,7 @@ import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
+import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import { BellIcon } from "@phosphor-icons/react/dist/ssr/Bell";
@@ -25,6 +26,7 @@ import { MobileNav } from "../mobile-nav";
 import { NotificationsPopover } from "../notifications-popover";
 import { SearchDialog } from "../search-dialog";
 import { UserPopover } from "../user-popover";
+import { useDashboardUser } from "../use-dashboard-user";
 
 export interface MainNavProps {
 	items: NavItemConfig[];
@@ -173,15 +175,9 @@ function LanguageSwitch(): React.JSX.Element {
 	);
 }
 
-const user = {
-	id: "USR-000",
-	name: "Sofia Rivers",
-	avatar: "/assets/avatar.png",
-	email: "sofia@devias.io",
-} as const;
-
 function UserButton(): React.JSX.Element {
 	const popover = usePopover<HTMLButtonElement>();
+	const user = useDashboardUser();
 
 	return (
 		<React.Fragment>
@@ -206,10 +202,14 @@ function UserButton(): React.JSX.Element {
 					}}
 					variant="dot"
 				>
-					<Avatar src={user.avatar} />
+					{user.isLoading ? (
+						<Skeleton sx={{ borderRadius: "50%" }} variant="circular" width={40} height={40} />
+					) : (
+						<Avatar src={user.avatar}>{user.initials}</Avatar>
+					)}
 				</Badge>
 			</Box>
-			<UserPopover anchorEl={popover.anchorRef.current} onClose={popover.handleClose} open={popover.open} />
+			<UserPopover anchorEl={popover.anchorRef.current} onClose={popover.handleClose} open={popover.open} user={user} />
 		</React.Fragment>
 	);
 }

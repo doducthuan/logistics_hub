@@ -68,9 +68,6 @@ def test_create_account_new_email(
         patch("app.core.config.settings.SMTP_HOST", "smtp.example.com"),
         patch("app.core.config.settings.SMTP_USER", "admin@example.com"),
     ):
-        me = client.get(
-            f"{settings.API_V1_STR}/accounts/me", headers=superuser_token_headers
-        ).json()
         username = random_email()
         password = random_lower_string()
         data = {
@@ -78,7 +75,6 @@ def test_create_account_new_email(
             "password": password,
             "full_name": "New",
             "role": AccountRole.user_level_1.value,
-            "parent_id": str(me["id"]),
         }
         r = client.post(
             f"{settings.API_V1_STR}/accounts/",
@@ -200,6 +196,52 @@ def test_create_account_existing_email(
     created = r.json()
     assert r.status_code == 400
     assert "_id" not in created
+
+
+def test_admin_create_l2_requires_parent_id(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    r = client.post(
+        f"{settings.API_V1_STR}/accounts/",
+        headers=superuser_token_headers,
+        json={
+            "email": random_email(),
+            "password": random_lower_string(),
+            "full_name": "L2",
+            "role": AccountRole.user_level_2.value,
+        },
+    )
+    assert r.status_code == 400
+    assert "parent_id" in r.json()["detail"].lower()
+
+
+def test_l1_create_l2_without_parent_id_uses_self(
+    client: TestClient, db: Session
+) -> None:
+    l1_email = random_email()
+    l1_password = random_lower_string()
+    l1 = _create_l1(db, l1_email, l1_password)
+    r = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": l1_email, "password": l1_password},
+    )
+    token = r.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    child_email = random_email()
+    resp = client.post(
+        f"{settings.API_V1_STR}/accounts/",
+        headers=headers,
+        json={
+            "email": child_email,
+            "password": random_lower_string(),
+            "full_name": "Child",
+            "role": AccountRole.user_level_2.value,
+        },
+    )
+    assert resp.status_code == 200
+    created = crud.get_account_by_email(session=db, email=child_email)
+    assert created is not None
+    assert created.parent_id == l1.id
 
 
 def test_create_account_by_level2_forbidden(

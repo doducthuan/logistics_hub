@@ -41,11 +41,59 @@ def _account_in_scope(session: SessionDep, current: Account, account_id: uuid.UU
 
 
 def _can_create_role(creator: Account, role: AccountRole) -> bool:
+    """Admin may create L1 and L2; User level 1 only L2; User level 2 cannot create."""
     if creator.role == AccountRole.admin:
-        return True
+        return role in (AccountRole.user_level_1, AccountRole.user_level_2)
     if creator.role == AccountRole.user_level_1:
         return role == AccountRole.user_level_2
     return False
+
+
+def _resolve_parent_id_for_create(
+    *,
+    current_account: Account,
+    account_in: AccountCreate,
+) -> uuid.UUID:
+    """
+    Hierarchy Admin → L1 → L2. If parent_id is omitted, use the current user's id when
+    valid. Admin creating User level 2 must send parent_id (a User level 1 id).
+    """
+    effective = account_in.parent_id
+
+    if effective is None:
+        if account_in.role == AccountRole.user_level_1:
+            if current_account.role != AccountRole.admin:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only an admin can create User level 1 accounts",
+                )
+            return current_account.id
+        if account_in.role == AccountRole.user_level_2:
+            if current_account.role == AccountRole.user_level_1:
+                return current_account.id
+            if current_account.role == AccountRole.admin:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "parent_id is required when an admin creates a User level 2 "
+                        "account (must reference a User level 1 account)"
+                    ),
+                )
+            raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise HTTPException(status_code=400, detail="Invalid role")
+
+    if current_account.role == AccountRole.user_level_1:
+        if account_in.role != AccountRole.user_level_2:
+            raise HTTPException(
+                status_code=400,
+                detail="User level 1 can only create User level 2 accounts",
+            )
+        if effective != current_account.id:
+            raise HTTPException(
+                status_code=400,
+                detail="User level 1 can only create User level 2 with themselves as parent",
+            )
+    return effective
 
 
 @router.get(
@@ -107,21 +155,24 @@ def create_account(
     current_account: CurrentAccount,
     account_in: AccountCreate,
 ) -> Any:
+    if account_in.role == AccountRole.admin:
+        raise HTTPException(
+            status_code=400,
+            detail="Creating admin accounts through this endpoint is not allowed",
+        )
     if not _can_create_role(current_account, account_in.role):
         raise HTTPException(status_code=403, detail="Not enough permissions")
-    if current_account.role == AccountRole.user_level_1:
-        if (
-            account_in.role != AccountRole.user_level_2
-            or account_in.parent_id != current_account.id
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="User level 1 can only create User level 2 accounts with themselves as parent",
-            )
+
+    parent_id = _resolve_parent_id_for_create(
+        current_account=current_account,
+        account_in=account_in,
+    )
+    resolved_in = account_in.model_copy(update={"parent_id": parent_id})
+
     try:
         account = crud.create_account(
             session=session,
-            account_create=account_in,
+            account_create=resolved_in,
             created_by_id=current_account.id,
         )
     except ValueError as e:

@@ -17,12 +17,7 @@ import { appConfig } from "@/config/app";
 import { paths } from "@/paths";
 import { AuthStrategy } from "@/lib/auth-strategy";
 
-const user = {
-	id: "USR-000",
-	name: "Sofia Rivers",
-	avatar: "/assets/avatar.png",
-	email: "sofia@devias.io",
-} as const;
+import type { DashboardUserDisplay } from "./use-dashboard-user";
 
 function SignOutButton(): React.JSX.Element {
 	let signOutUrl: string = paths.home;
@@ -56,11 +51,12 @@ function SignOutButton(): React.JSX.Element {
 
 export interface UserPopoverProps {
 	anchorEl: null | Element;
+	user: DashboardUserDisplay;
 	onClose?: () => void;
 	open: boolean;
 }
 
-export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): React.JSX.Element {
+export function UserPopover({ anchorEl, onClose, open, user }: UserPopoverProps): React.JSX.Element {
 	return (
 		<Popover
 			anchorEl={anchorEl}
@@ -71,9 +67,9 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
 			transformOrigin={{ horizontal: "right", vertical: "top" }}
 		>
 			<Box sx={{ p: 2 }}>
-				<Typography>{user.name}</Typography>
+				<Typography>{user.isLoading ? "…" : user.name}</Typography>
 				<Typography color="text.secondary" variant="body2">
-					{user.email}
+					{user.isLoading ? "…" : user.email}
 				</Typography>
 			</Box>
 			<Divider />

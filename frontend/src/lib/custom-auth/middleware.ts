@@ -1,25 +1,67 @@
-import "server-only";
-
 import { NextResponse, type NextRequest } from "next/server";
 
 import { paths } from "@/paths";
-import { logger } from "@/lib/default-logger";
-import { getAppUrl } from "@/lib/get-app-url";
+import { validateAccessToken } from "@/lib/custom-auth/api";
 
-import { getUser } from "./server";
+function normalizePath(pathname: string): string {
+	if (pathname.length > 1 && pathname.endsWith("/")) {
+		return pathname.slice(0, -1);
+	}
+	return pathname;
+}
+
+function isPublicPath(pathname: string): boolean {
+	const p = normalizePath(pathname);
+
+	if (p === paths.home) return true;
+	if (p === paths.login) return true;
+	if (p === paths.forgotPassword) return true;
+	if (p === paths.auth.custom.profile) return true;
+	if (p === paths.auth.custom.resetPassword) return true;
+	if (p === paths.auth.custom.signOut) return true;
+	if (p.startsWith("/errors/")) return true;
+
+	return false;
+}
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
-	const res = NextResponse.next({ request: req });
+	const pathname = normalizePath(req.nextUrl.pathname);
 
-	if (req.nextUrl.pathname.startsWith("/dashboard")) {
-		const { data } = await getUser();
-
-		if (!data?.user) {
-			logger.debug("[Middleware] User is not logged in, redirecting to sign in");
-			const redirectTo = new URL(paths.auth.custom.signIn, getAppUrl());
-			return NextResponse.redirect(redirectTo);
-		}
+	if (pathname === paths.auth.custom.signIn) {
+		return NextResponse.redirect(new URL(paths.login, req.url));
 	}
 
-	return res;
+	if (isPublicPath(pathname)) {
+		return NextResponse.next({ request: req });
+	}
+
+	const token = req.cookies.get("access_token")?.value;
+
+	if (!token) {
+		return redirectToLogin(req);
+	}
+
+	const valid = await validateAccessToken(token);
+	if (!valid) {
+		const res = redirectToLogin(req);
+		res.cookies.set("access_token", "", {
+			httpOnly: true,
+			path: "/",
+			maxAge: 0,
+			sameSite: "lax",
+			secure: process.env.NODE_ENV === "production",
+		});
+		return res;
+	}
+
+	return NextResponse.next({ request: req });
+}
+
+function redirectToLogin(req: NextRequest): NextResponse {
+	const loginUrl = new URL(paths.login, req.url);
+	const returnTo = `${req.nextUrl.pathname}${req.nextUrl.search}`;
+	if (returnTo !== paths.login && returnTo !== paths.home) {
+		loginUrl.searchParams.set("callbackUrl", returnTo);
+	}
+	return NextResponse.redirect(loginUrl);
 }

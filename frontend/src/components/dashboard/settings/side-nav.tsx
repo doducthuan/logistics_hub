@@ -5,6 +5,7 @@ import RouterLink from "next/link";
 import { usePathname } from "next/navigation";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
+import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { Icon } from "@phosphor-icons/react/dist/lib/types";
@@ -18,6 +19,7 @@ import { UsersThreeIcon } from "@phosphor-icons/react/dist/ssr/UsersThree";
 import type { NavItemConfig } from "@/types/nav";
 import { paths } from "@/paths";
 import { isNavItemActive } from "@/lib/is-nav-item-active";
+import { useDashboardUser } from "@/components/dashboard/layout/use-dashboard-user";
 
 // NOTE: First level elements are groups.
 
@@ -58,6 +60,7 @@ const icons = {
 
 export function SideNav(): React.JSX.Element {
 	const pathname = usePathname();
+	const user = useDashboardUser();
 
 	return (
 		<div>
@@ -90,11 +93,15 @@ export function SideNav(): React.JSX.Element {
 					))}
 				</Stack>
 				<Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-					<Avatar src="/assets/avatar.png">AV</Avatar>
+					{user.isLoading ? (
+						<Skeleton sx={{ borderRadius: "50%" }} variant="circular" width={40} height={40} />
+					) : (
+						<Avatar src={user.avatar}>{user.initials}</Avatar>
+					)}
 					<div>
-						<Typography variant="subtitle1">Sofia Rivers</Typography>
+						<Typography variant="subtitle1">{user.isLoading ? "…" : user.name}</Typography>
 						<Typography color="text.secondary" variant="caption">
-							sofia@devias.io
+							{user.isLoading ? "…" : user.email}
 						</Typography>
 					</div>
 				</Stack>

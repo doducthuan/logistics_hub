@@ -5,5 +5,6 @@ export const user = {
 	avatar: "/assets/avatar.png",
 	firstName: "Sofia",
 	lastName: "Rivers",
+	fullName: "Sofia Rivers",
 	email: "sofia@devias.io",
 } satisfies User;

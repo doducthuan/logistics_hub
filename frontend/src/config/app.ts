@@ -1,4 +1,4 @@
-import { AuthStrategy } from "@/lib/auth-strategy";
+import { AuthStrategy, resolveAuthStrategyFromEnv } from "@/lib/auth-strategy";
 import { LogLevel } from "@/lib/logger";
 import type { PrimaryColor } from "@/styles/theme/types";
 
@@ -27,5 +27,5 @@ export const appConfig: AppConfig = {
 	themeColor: "#090a0b",
 	primaryColor: "neonBlue",
 	logLevel: (process.env.NEXT_PUBLIC_LOG_LEVEL as keyof typeof LogLevel) || LogLevel.ALL,
-	authStrategy: (process.env.NEXT_PUBLIC_AUTH_STRATEGY as keyof typeof AuthStrategy) || AuthStrategy.NONE,
+	authStrategy: resolveAuthStrategyFromEnv(),
 };

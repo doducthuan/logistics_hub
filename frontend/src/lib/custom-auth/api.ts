@@ -1,0 +1,135 @@
+/**
+ * Backend API helpers for custom auth (no "server-only" — safe for Edge middleware).
+ */
+
+import type { User } from "./types";
+
+export interface AccountPublicResponse {
+	id: string;
+	email: string;
+	full_name: string;
+	role: string;
+	is_active: boolean;
+	phone?: string | null;
+	description?: string | null;
+	parent_id?: string | null;
+	created_at?: string | null;
+	updated_at?: string | null;
+	last_login_at?: string | null;
+}
+
+function formatErrorDetail(detail: unknown): string {
+	if (typeof detail === "string") {
+		return detail;
+	}
+	if (Array.isArray(detail)) {
+		const s = detail
+			.map((d) =>
+				d && typeof d === "object" && "msg" in d && typeof (d as { msg?: string }).msg === "string"
+					? (d as { msg: string }).msg
+					: null
+			)
+			.filter(Boolean)
+			.join(", ");
+		return s || "Incorrect email or password";
+	}
+	return "Incorrect email or password";
+}
+
+export function getApiBaseUrl(): string {
+	const url = process.env.NEXT_PUBLIC_API_URL;
+	if (!url) {
+		throw new Error("NEXT_PUBLIC_API_URL is not configured");
+	}
+	return url.replace(/\/$/, "");
+}
+
+export function mapAccountToUser(account: AccountPublicResponse): User {
+	const full = account.full_name.trim();
+	const parts = full.split(/\s+/).filter(Boolean);
+	const firstName = parts[0] ?? "";
+	const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
+
+	return {
+		id: String(account.id),
+		email: account.email,
+		fullName: full || account.email,
+		firstName,
+		lastName,
+		avatar: "",
+	};
+}
+
+export async function validateAccessToken(accessToken: string): Promise<boolean> {
+	try {
+		const account = await fetchAccountByAccessToken(accessToken);
+		return account !== null;
+	} catch {
+		return false;
+	}
+}
+
+export async function fetchAccountByAccessToken(accessToken: string): Promise<AccountPublicResponse | null> {
+	const res = await fetch(`${getApiBaseUrl()}/api/v1/login/test-token`, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${accessToken}`,
+			Accept: "application/json",
+		},
+		cache: "no-store",
+	});
+
+	if (!res.ok) {
+		return null;
+	}
+
+	return (await res.json()) as AccountPublicResponse;
+}
+
+export async function loginAccessToken(email: string, password: string): Promise<{ access_token: string } | { detail: string }> {
+	const body = new URLSearchParams();
+	body.set("username", email);
+	body.set("password", password);
+
+	const res = await fetch(`${getApiBaseUrl()}/api/v1/login/access-token`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/x-www-form-urlencoded",
+			Accept: "application/json",
+		},
+		body,
+		cache: "no-store",
+	});
+
+	const data = (await res.json()) as { access_token?: string; detail?: unknown };
+
+	if (!res.ok) {
+		const detail = formatErrorDetail(data.detail);
+		return { detail };
+	}
+
+	if (!data.access_token) {
+		return { detail: "Invalid response from server" };
+	}
+
+	return { access_token: data.access_token };
+}
+
+export async function requestPasswordRecoveryEmail(email: string): Promise<{ ok: true } | { error: string }> {
+	const res = await fetch(`${getApiBaseUrl()}/api/v1/password-recovery/${encodeURIComponent(email)}`, {
+		method: "POST",
+		headers: { Accept: "application/json" },
+		cache: "no-store",
+	});
+
+	if (!res.ok) {
+		const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+		const detail =
+			typeof data.detail === "string"
+				? data.detail
+				: "Could not send recovery email. Please try again later.";
+		return { error: detail };
+	}
+
+	return { ok: true };
+}
