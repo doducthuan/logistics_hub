@@ -19,8 +19,8 @@ export interface AppConfig {
 }
 
 export const appConfig: AppConfig = {
-	name: "Devias Kit Pro",
-	description: "",
+	name: "OKELA Express",
+	description: "OKELA Express is a logistics company that provides express delivery services for all types of goods.",
 	direction: "ltr",
 	language: "en",
 	theme: "light",
