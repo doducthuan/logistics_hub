@@ -16,10 +16,6 @@ import { toast } from "@/components/core/toaster";
 
 import type { AccountItem } from "./types";
 
-const activeLabelMap: Record<"active" | "inactive", { label: string; color: "success" | "default" }> = {
-	active: { label: "Đang hoạt động", color: "success" },
-	inactive: { label: "Tạm khóa", color: "default" },
-};
 
 export interface AccountsTableProps {
 	rows: AccountItem[];
@@ -83,10 +79,12 @@ export function AccountsTable({ rows, loading = false, onView }: AccountsTablePr
 				name: "Trạng thái",
 				align: "center",
 				width: "120px",
-				formatter: (row) => {
-					const map = row.is_active ? activeLabelMap.active : activeLabelMap.inactive;
-					return <Chip color={map.color} label={map.label} size="small" variant="outlined" />;
-				},
+				formatter: (row) =>
+					row.is_active ? (
+						<Chip color="success" label="Đang hoạt động" size="small" variant="outlined" />
+					) : (
+						<Chip color="error" label="Tạm khóa" size="small" variant="outlined" />
+					),
 			},
 			{
 				name: "Ngày tạo",

@@ -114,10 +114,22 @@ def read_accounts(
             detail="User level 2 cannot access the accounts list",
         )
 
-    if current_account.role in (AccountRole.admin, AccountRole.user_level_1):
-        # Admin chỉ tạo User cấp 1 → chỉ hiển thị các tài khoản có parent_id = admin.
-        # User cấp 1 chỉ tạo User cấp 2 → chỉ hiển thị các tài khoản có parent_id = L1.
-        # Không gộp cháu (L2 của L1) vào danh sách của admin.
+    if current_account.role == AccountRole.admin:
+        # Danh sách mặc định: User cấp 1 (parent_id = admin).
+        # Khi parent_id trỏ tới User cấp 1 khác: liệt kê User cấp 2 do L1 đó quản lý.
+        if parent_id is not None and parent_id != current_account.id:
+            parent_row = session.get(Account, parent_id)
+            if parent_row is None:
+                raise HTTPException(status_code=404, detail="Parent account not found")
+            if parent_row.role != AccountRole.user_level_1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Can only list children of User level 1 accounts",
+                )
+            statement = select(Account).where(Account.parent_id == parent_id)
+        else:
+            statement = select(Account).where(Account.parent_id == current_account.id)
+    elif current_account.role == AccountRole.user_level_1:
         statement = select(Account).where(Account.parent_id == current_account.id)
         if parent_id is not None:
             statement = statement.where(Account.parent_id == parent_id)

@@ -397,6 +397,36 @@ def test_admin_list_direct_children_only_level1_not_level2(
     assert l2_email not in emails
 
 
+def test_admin_list_level2_children_by_l1_parent_id(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    """Admin truyền parent_id = User cấp 1: nhận danh sách User cấp 2 do L1 đó quản lý."""
+    admin = _admin(db)
+    l1 = _create_l1(db, random_email(), random_lower_string())
+    l2_email = random_email()
+    l2_in = AccountCreate(
+        email=l2_email,
+        password=random_lower_string(),
+        full_name="L2 child",
+        phone=None,
+        description=None,
+        role=AccountRole.user_level_2,
+        parent_id=l1.id,
+    )
+    crud.create_account(session=db, account_create=l2_in, created_by_id=admin.id)
+
+    r = client.get(
+        f"{settings.API_V1_STR}/accounts/",
+        headers=superuser_token_headers,
+        params={"parent_id": str(l1.id)},
+    )
+    assert r.status_code == 200
+    payload = r.json()
+    emails = {row["email"] for row in payload["data"]}
+    assert l2_email in emails
+    assert payload["count"] >= 1
+
+
 def test_update_account_me(
     client: TestClient, normal_user_token_headers: dict[str, str], db: Session
 ) -> None:

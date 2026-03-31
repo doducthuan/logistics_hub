@@ -19,6 +19,8 @@ export interface AccountsPaginationProps {
 	rowsPerPage: number;
 	onPageChange: (page: number) => void;
 	onRowsPerPageChange: (rowsPerPage: number) => void;
+	/** Bố cục gọn (modal, bảng phụ). */
+	compact?: boolean;
 }
 
 /**
@@ -30,29 +32,38 @@ export function AccountsPagination({
 	rowsPerPage,
 	onPageChange,
 	onRowsPerPageChange,
+	compact = false,
 }: AccountsPaginationProps): React.JSX.Element {
 	const totalPages = count === 0 ? 0 : Math.max(1, Math.ceil(count / rowsPerPage));
 	const pageOneBased = count === 0 ? 1 : Math.min(page + 1, totalPages);
 
 	return (
 		<Stack
-			direction={{ xs: "column", md: "row" }}
-			spacing={2}
+			direction={{ xs: "column", lg: "row" }}
+			spacing={compact ? 1.5 : 2}
 			sx={{
-				alignItems: { xs: "stretch", md: "center" },
-				flexWrap: "wrap",
-				justifyContent: "space-between",
-				px: 2,
-				py: 2,
+				alignItems: { xs: "center", lg: "center" },
+				flexWrap: { lg: "wrap" },
+				justifyContent: { xs: "center", lg: "space-between" },
+				px: compact ? 0 : 2,
+				py: compact ? 1.5 : 2,
+				width: "100%",
 			}}
 		>
-			<Stack alignItems="center" direction="row" flexWrap="nowrap" spacing={1.5} sx={{ flexShrink: 0, minWidth: 0 }}>
+			<Stack
+				alignItems="center"
+				direction="row"
+				flexWrap="nowrap"
+				justifyContent={{ xs: "center", lg: "flex-start" }}
+				spacing={1.5}
+				sx={{ flexShrink: 0, minWidth: 0, width: { xs: "100%", lg: "auto" } }}
+			>
 				<FormControl
 					size="small"
 					sx={{
 						flexShrink: 0,
 						minWidth: 0,
-						width: 76,
+						width: compact ? 58 : 76,
 					}}
 					variant="outlined"
 				>
@@ -63,18 +74,29 @@ export function AccountsPagination({
 							onRowsPerPageChange(Number(event.target.value));
 						}}
 						sx={{
-							"& .MuiSelect-select": { py: 0.65, textAlign: "center" },
+							fontSize: compact ? "0.75rem" : undefined,
+							"& .MuiSelect-select": {
+								py: compact ? 0.35 : 0.65,
+								px: compact ? 0.75 : undefined,
+								minHeight: compact ? 0 : undefined,
+								textAlign: "center",
+							},
+							"& .MuiSvgIcon-root": compact ? { fontSize: "1.125rem", right: 4 } : undefined,
 						}}
 						value={rowsPerPage}
 					>
 						{ROWS_PER_PAGE_OPTIONS.map((n) => (
-							<MenuItem key={n} value={n}>
+							<MenuItem key={n} sx={compact ? { fontSize: "0.5rem", minHeight: 32, py: 0.25 } : undefined} value={n}>
 								{n}
 							</MenuItem>
 						))}
 					</Select>
 				</FormControl>
-				<Typography color="text.secondary" sx={{ minWidth: 0 }} variant="body2">
+				<Typography
+					color="text.secondary"
+					sx={{ minWidth: 0, textAlign: { xs: "center", lg: "left" } }}
+					variant={compact ? "caption" : "body2"}
+				>
 					{count === 0 ? (
 						<>Chưa có dữ liệu · Tổng 0 tài khoản</>
 					) : (
@@ -90,10 +112,10 @@ export function AccountsPagination({
 			<Box
 				sx={{
 					display: "flex",
-					flex: { md: 1 },
-					justifyContent: "flex-end",
+					flex: { lg: 1 },
+					justifyContent: { xs: "center", lg: "flex-end" },
 					minWidth: 0,
-					width: { xs: "100%", md: "auto" },
+					width: { xs: "100%", lg: "auto" },
 				}}
 			>
 				<Pagination
@@ -108,7 +130,14 @@ export function AccountsPagination({
 					showFirstButton
 					showLastButton
 					siblingCount={1}
-					size="medium"
+					size={compact ? "small" : "medium"}
+					sx={{
+						"& .MuiPagination-ul": {
+							flexWrap: "wrap",
+							justifyContent: "center",
+							rowGap: 0.5,
+						},
+					}}
 				/>
 			</Box>
 		</Stack>

@@ -23,8 +23,8 @@ import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 
 import { dayjs } from "@/lib/dayjs";
 import { Option } from "@/components/core/option";
-import { PropertyItem } from "@/components/core/property-item";
 
+import { AccountL2ManagedSection } from "./account-l2-managed-section";
 import type { AccountItem } from "./types";
 
 /** Dấu * bắt buộc trên nhãn — luôn màu đỏ (error) */
@@ -36,6 +36,8 @@ const requiredLabelFormControlSx = {
 export interface AccountDetailsModalProps {
 	open: boolean;
 	account: AccountItem | null;
+	/** User đang đăng nhập (để hiển thị bảng L2 khi admin xem User cấp 1). */
+	viewerAccount: AccountItem | null;
 	allScopeAccounts: AccountItem[];
 	onClose: () => void;
 	onUpdated: () => Promise<void>;
@@ -64,6 +66,7 @@ function buildEditState(account: AccountItem): EditState {
 export function AccountDetailsModal({
 	open,
 	account,
+	viewerAccount,
 	allScopeAccounts,
 	onClose,
 	onUpdated,
@@ -74,7 +77,6 @@ export function AccountDetailsModal({
 	const [showPassword, setShowPassword] = React.useState(false);
 	const [creatorName, setCreatorName] = React.useState<string>("");
 	const [updaterName, setUpdaterName] = React.useState<string>("");
-
 	React.useEffect(() => {
 		if (account) {
 			setForm(buildEditState(account));
@@ -203,10 +205,10 @@ export function AccountDetailsModal({
 					<XIcon />
 				</IconButton>
 			</DialogTitle>
-			<DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 3, minHeight: 0 }}>
+			<DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 3, minHeight: 0, overflowX: "hidden" }}>
 				{error ? <Alert severity="error">{error}</Alert> : null}
 				{form ? (
-					<Stack spacing={2}>
+					<Stack spacing={2} sx={{ maxWidth: "100%", minWidth: 0 }}>
 						<Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
 							<FormControl fullWidth required sx={requiredLabelFormControlSx}>
 								<InputLabel>Họ và tên</InputLabel>
@@ -295,6 +297,13 @@ export function AccountDetailsModal({
 								value={form.description}
 							/>
 						</FormControl>
+						{viewerAccount?.role === "admin" && account?.role === "user_level_1" && account ? (
+							<AccountL2ManagedSection
+								key={account.id}
+								enabled={open}
+								parentId={account.id}
+							/>
+						) : null}
 					</Stack>
 				) : (
 					<Box sx={{ py: 2 }}>
@@ -304,29 +313,55 @@ export function AccountDetailsModal({
 					</Box>
 				)}
 
-				<Stack spacing={1}>
-					<Typography variant="subtitle2">Thông tin hệ thống</Typography>
+				<Stack spacing={2} sx={{ maxWidth: "100%", minWidth: 0 }}>
+					{/* <Typography variant="subtitle2">Thông tin hệ thống</Typography> */}
 					<Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-						<Box sx={{ flex: 1 }}>
-							<PropertyItem
-								name="Ngày tạo"
+						<FormControl fullWidth>
+							<InputLabel shrink>Ngày tạo</InputLabel>
+							<OutlinedInput
+								inputProps={{ readOnly: true, tabIndex: -1 }}
+								label="Ngày tạo"
+								notched
+								readOnly
+								sx={{ "& .MuiInputBase-input": { cursor: "default" } }}
 								value={account?.created_at ? dayjs(account.created_at).format("HH:mm DD/MM/YYYY") : ""}
 							/>
-						</Box>
-						<Box sx={{ flex: 1 }}>
-							<PropertyItem name="Người tạo" value={creatorName || "Không rõ"} />
-						</Box>
+						</FormControl>
+						<FormControl fullWidth>
+							<InputLabel shrink>Người tạo</InputLabel>
+							<OutlinedInput
+								inputProps={{ readOnly: true, tabIndex: -1 }}
+								label="Người tạo"
+								notched
+								readOnly
+								sx={{ "& .MuiInputBase-input": { cursor: "default" } }}
+								value={creatorName || "Không rõ"}
+							/>
+						</FormControl>
 					</Stack>
 					<Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-						<Box sx={{ flex: 1 }}>
-							<PropertyItem
-								name="Ngày cập nhật"
+						<FormControl fullWidth>
+							<InputLabel shrink>Ngày cập nhật</InputLabel>
+							<OutlinedInput
+								inputProps={{ readOnly: true, tabIndex: -1 }}
+								label="Ngày cập nhật"
+								notched
+								readOnly
+								sx={{ "& .MuiInputBase-input": { cursor: "default" } }}
 								value={account?.updated_at ? dayjs(account.updated_at).format("HH:mm DD/MM/YYYY") : ""}
 							/>
-						</Box>
-						<Box sx={{ flex: 1 }}>
-							<PropertyItem name="Người cập nhật" value={updaterName || "Không rõ"} />
-						</Box>
+						</FormControl>
+						<FormControl fullWidth>
+							<InputLabel shrink>Người cập nhật</InputLabel>
+							<OutlinedInput
+								inputProps={{ readOnly: true, tabIndex: -1 }}
+								label="Người cập nhật"
+								notched
+								readOnly
+								sx={{ "& .MuiInputBase-input": { cursor: "default" } }}
+								value={updaterName || "Không rõ"}
+							/>
+						</FormControl>
 					</Stack>
 				</Stack>
 			</DialogContent>

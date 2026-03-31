@@ -216,6 +216,7 @@ export function AccountsView(): React.JSX.Element {
 				}}
 				onUpdated={loadData}
 				open={detailsOpen}
+				viewerAccount={currentAccount}
 			/>
 		</React.Fragment>
 	);
