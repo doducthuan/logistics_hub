@@ -129,7 +129,7 @@ export function AccountsTable({ rows, loading = false, onView }: AccountsTablePr
 			/>
 			{rows.length === 0 ? (
 				<Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }} variant="body2">
-					{loading ? "Đang tải dữ liệu tài khoản..." : "Không có tài khoản con nào"}
+					{loading ? "Đang tải dữ liệu ..." : "Không có dữ liệu"}
 				</Typography>
 			) : null}
 		</React.Fragment>
