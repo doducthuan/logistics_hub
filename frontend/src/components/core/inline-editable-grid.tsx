@@ -43,6 +43,8 @@ export interface InlineEditableGridProps {
 	maxRows?: number;
 	/** Tab / Enter ở ô cuối cùng: thêm dòng (mặc định true). */
 	addRowOnLastCellAdvance?: boolean;
+	/** Hiển thị cột Thao tác (+/-). Mặc định true. */
+	showActionsColumn?: boolean;
 }
 
 function cellRefKey(row: number, col: number): string {
@@ -62,6 +64,7 @@ export function InlineEditableGrid({
 	minRows = 1,
 	maxRows,
 	addRowOnLastCellAdvance = true,
+	showActionsColumn = true,
 }: InlineEditableGridProps): React.JSX.Element {
 	const inputRefs = React.useRef<Map<string, HTMLInputElement | HTMLTextAreaElement>>(new Map());
 	const pendingFocusRef = React.useRef<{ row: number; col: number } | null>(null);
@@ -237,18 +240,20 @@ export function InlineEditableGrid({
 							{col.label}
 						</TableCell>
 					))}
-					<TableCell
-						align="right"
-						sx={(theme) => ({
-							fontSize: theme.typography.body2.fontSize,
-							fontWeight: 600,
-							lineHeight: theme.typography.body2.lineHeight,
-							verticalAlign: "middle",
-							width: 96,
-						})}
-					>
-						Thao tác
-					</TableCell>
+					{showActionsColumn ? (
+						<TableCell
+							align="right"
+							sx={(theme) => ({
+								fontSize: theme.typography.body2.fontSize,
+								fontWeight: 600,
+								lineHeight: theme.typography.body2.lineHeight,
+								verticalAlign: "middle",
+								width: 96,
+							})}
+						>
+							Thao tác
+						</TableCell>
+					) : null}
 				</TableRow>
 			</TableHead>
 			<TableBody>
@@ -321,30 +326,32 @@ export function InlineEditableGrid({
 								</TableCell>
 							);
 						})}
-						<TableCell align="right" sx={{ verticalAlign: "middle" }}>
-							<Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5 }}>
-								<IconButton
-									aria-label="Thêm dòng phía dưới"
-									disabled={disabled || (maxRows !== undefined && rows.length >= maxRows)}
-									onClick={() => {
-										addRowAfter(rowIndex);
-									}}
-									size="small"
-								>
-									<PlusIcon />
-								</IconButton>
-								<IconButton
-									aria-label="Xóa dòng"
-									disabled={disabled || rows.length <= minRows}
-									onClick={() => {
-										removeRowAt(rowIndex);
-									}}
-									size="small"
-								>
-									<MinusIcon />
-								</IconButton>
-							</Box>
-						</TableCell>
+						{showActionsColumn ? (
+							<TableCell align="right" sx={{ verticalAlign: "middle" }}>
+								<Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5 }}>
+									<IconButton
+										aria-label="Thêm dòng phía dưới"
+										disabled={disabled || (maxRows !== undefined && rows.length >= maxRows)}
+										onClick={() => {
+											addRowAfter(rowIndex);
+										}}
+										size="small"
+									>
+										<PlusIcon />
+									</IconButton>
+									<IconButton
+										aria-label="Xóa dòng"
+										disabled={disabled || rows.length <= minRows}
+										onClick={() => {
+											removeRowAt(rowIndex);
+										}}
+										size="small"
+									>
+										<MinusIcon />
+									</IconButton>
+								</Box>
+							</TableCell>
+						) : null}
 					</TableRow>
 				))}
 			</TableBody>

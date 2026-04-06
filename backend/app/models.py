@@ -194,6 +194,9 @@ class CategoryPublic(CategoryCore):
     created_by_id: uuid.UUID | None = None
     updated_by_id: uuid.UUID | None = None
     is_active: bool = True
+    # Join Account.full_name ở tầng API — client không cần GET /accounts/{id} (tránh 403 user cấp 2).
+    created_by_full_name: str | None = None
+    updated_by_full_name: str | None = None
 
 
 class CategoriesPublic(SQLModel):

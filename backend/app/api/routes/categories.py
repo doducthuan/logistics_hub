@@ -3,7 +3,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_
-from sqlmodel import col, func, select
+from sqlmodel import Session, col, func, select
 
 from app import crud
 from app.api.deps import CurrentAccount, SessionDep, get_current_active_admin
@@ -20,6 +20,39 @@ from app.models import (
 router = APIRouter(prefix="/categories", tags=["categories"])
 
 CurrentAdmin = Annotated[Account, Depends(get_current_active_admin)]
+
+
+def _collect_audit_ids(categories: list[Category]) -> set[uuid.UUID]:
+    ids: set[uuid.UUID] = set()
+    for c in categories:
+        if c.created_by_id is not None:
+            ids.add(c.created_by_id)
+        if c.updated_by_id is not None:
+            ids.add(c.updated_by_id)
+    return ids
+
+
+def _audit_name_map(session: Session, account_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    if not account_ids:
+        return {}
+    rows = session.exec(select(Account).where(col(Account.id).in_(account_ids))).all()
+    return {a.id: a.full_name for a in rows}
+
+
+def _category_to_public(category: Category, name_by_id: dict[uuid.UUID, str]) -> CategoryPublic:
+    return CategoryPublic(
+        id=category.id,
+        name=category.name,
+        description=category.description,
+        parent_id=category.parent_id,
+        created_at=category.created_at,
+        updated_at=category.updated_at,
+        created_by_id=category.created_by_id,
+        updated_by_id=category.updated_by_id,
+        is_active=category.is_active,
+        created_by_full_name=name_by_id.get(category.created_by_id) if category.created_by_id else None,
+        updated_by_full_name=name_by_id.get(category.updated_by_id) if category.updated_by_id else None,
+    )
 
 
 @router.get("/", response_model=CategoriesPublic)
@@ -55,8 +88,12 @@ def read_categories(
     count = session.exec(count_statement).one()
 
     statement = statement.order_by(col(Category.created_at).desc()).offset(skip).limit(limit)
-    rows = session.exec(statement).all()
-    return CategoriesPublic(data=rows, count=count)
+    rows = list(session.exec(statement).all())
+    name_by_id = _audit_name_map(session, _collect_audit_ids(rows))
+    return CategoriesPublic(
+        data=[_category_to_public(c, name_by_id) for c in rows],
+        count=count,
+    )
 
 
 @router.get("/{category_id}", response_model=CategoryPublic)
@@ -69,7 +106,9 @@ def read_category(
     row = session.get(Category, category_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Category not found")
-    return row
+    audit_ids = {x for x in (row.created_by_id, row.updated_by_id) if x is not None}
+    name_by_id = _audit_name_map(session, audit_ids)
+    return _category_to_public(row, name_by_id)
 
 
 @router.post("/", response_model=CategoryPublic)
@@ -81,13 +120,15 @@ def create_category(
 ) -> Any:
     """Chỉ admin."""
     try:
-        return crud.create_category(
+        db_row = crud.create_category(
             session=session,
             category_in=body,
             created_by_id=admin.id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    audit_ids = {x for x in (db_row.created_by_id, db_row.updated_by_id) if x is not None}
+    return _category_to_public(db_row, _audit_name_map(session, audit_ids))
 
 
 @router.patch("/{category_id}", response_model=CategoryPublic)
@@ -103,7 +144,7 @@ def update_category(
     if db_row is None:
         raise HTTPException(status_code=404, detail="Category not found")
     try:
-        return crud.update_category(
+        updated = crud.update_category(
             session=session,
             db_category=db_row,
             category_in=body,
@@ -111,6 +152,8 @@ def update_category(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    audit_ids = {x for x in (updated.created_by_id, updated.updated_by_id) if x is not None}
+    return _category_to_public(updated, _audit_name_map(session, audit_ids))
 
 
 @router.delete("/{category_id}", response_model=Message)

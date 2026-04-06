@@ -52,10 +52,18 @@ export function CategoriesView({ initialPayload = null }: CategoriesViewProps): 
 	const [detailsOpen, setDetailsOpen] = React.useState(false);
 	const [selected, setSelected] = React.useState<CategoryItem | null>(null);
 
-	/** Chỉ bỏ qua fetch client một lần khi RSC đã trả đúng trang gốc. */
-	const consumedServerInitialRef = React.useRef(false);
+	/**
+	 * true sau khi user rời khỏi view trùng dữ liệu bootstrap server (trang 1, size mặc định, không keyword).
+	 * Dùng cùng điều kiện skip fetch để React 18 Strict Mode (chạy effect 2 lần) không gọi API thừa.
+	 */
+	const everLeftBootstrapRef = React.useRef(false);
+	const alignedWithServerBootstrap =
+		page === 0 && rowsPerPage === DEFAULT_SERVER_PAGE_SIZE && appliedKeyword === "";
+	if (!alignedWithServerBootstrap) {
+		everLeftBootstrapRef.current = true;
+	}
 
-	const loadData = React.useCallback(async () => {
+	const loadData = React.useCallback(async (signal?: AbortSignal) => {
 		setLoading(true);
 		setError(null);
 		try {
@@ -66,7 +74,10 @@ export function CategoriesView({ initialPayload = null }: CategoriesViewProps): 
 			if (appliedKeyword) {
 				params.set("keyword", appliedKeyword);
 			}
-			const res = await fetch(`/api/categories?${params.toString()}`, { cache: "no-store" });
+			const res = await fetch(`/api/categories?${params.toString()}`, {
+				cache: "no-store",
+				signal,
+			});
 			const payload = (await res.json().catch(() => ({}))) as unknown;
 			if (!res.ok) {
 				setError(extractErrorMessage(payload));
@@ -75,7 +86,10 @@ export function CategoriesView({ initialPayload = null }: CategoriesViewProps): 
 			const data = payload as CategoriesApiResponse;
 			setRows(data.data);
 			setCount(data.count);
-		} catch {
+		} catch (err) {
+			if (err instanceof DOMException && err.name === "AbortError") {
+				return;
+			}
 			setError("Không thể kết nối máy chủ");
 		} finally {
 			setLoading(false);
@@ -83,13 +97,18 @@ export function CategoriesView({ initialPayload = null }: CategoriesViewProps): 
 	}, [appliedKeyword, page, rowsPerPage]);
 
 	React.useEffect(() => {
-		const alignedRoot = page === 0 && rowsPerPage === DEFAULT_SERVER_PAGE_SIZE && appliedKeyword === "";
-		if (initialPayload && alignedRoot && !consumedServerInitialRef.current) {
-			consumedServerInitialRef.current = true;
+		const skipBecauseServerHydrated =
+			initialPayload != null && alignedWithServerBootstrap && !everLeftBootstrapRef.current;
+		if (skipBecauseServerHydrated) {
 			return;
 		}
-		void loadData();
-	}, [appliedKeyword, initialPayload, loadData, page, rowsPerPage]);
+
+		const ac = new AbortController();
+		void loadData(ac.signal);
+		return () => {
+			ac.abort();
+		};
+	}, [alignedWithServerBootstrap, appliedKeyword, initialPayload, loadData, page, rowsPerPage]);
 
 	React.useEffect(() => {
 		if (count === 0) {

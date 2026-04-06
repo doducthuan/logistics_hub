@@ -8,6 +8,9 @@ export interface CategoryItem {
 	updated_at?: string | null;
 	created_by_id?: string | null;
 	updated_by_id?: string | null;
+	/** Họ tên từ API (join), không gọi GET /accounts/{id}. */
+	created_by_full_name?: string | null;
+	updated_by_full_name?: string | null;
 }
 
 export interface CategoriesApiResponse {

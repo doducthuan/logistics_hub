@@ -120,8 +120,6 @@ export function CategoryDetailsModal({
 	const [childrenLoading, setChildrenLoading] = React.useState(false);
 	const [loading, setLoading] = React.useState(false);
 	const [error, setError] = React.useState<string | null>(null);
-	const [creatorName, setCreatorName] = React.useState("");
-	const [updaterName, setUpdaterName] = React.useState("");
 	const [childSearchText, setChildSearchText] = React.useState("");
 	const [appliedChildKeyword, setAppliedChildKeyword] = React.useState("");
 
@@ -177,40 +175,6 @@ export function CategoryDetailsModal({
 			cancelled = true;
 		};
 	}, [category, category?.id, isAdmin, open]);
-
-	React.useEffect(() => {
-		let active = true;
-		async function resolveNames(): Promise<void> {
-			const createdId = category?.created_by_id ?? null;
-			const updatedId = category?.updated_by_id ?? null;
-			const ids = [...new Set([createdId, updatedId].filter(Boolean) as string[])];
-			const nameById = new Map<string, string>();
-
-			for (const id of ids) {
-				const res = await fetch(`/api/accounts/${encodeURIComponent(id)}`, { cache: "no-store" });
-				if (!res.ok) {
-					nameById.set(id, "");
-					continue;
-				}
-				const payload = (await res.json()) as { full_name?: string };
-				nameById.set(id, payload.full_name ?? "");
-			}
-
-			if (!active) {
-				return;
-			}
-			setCreatorName(createdId ? (nameById.get(createdId) ?? "") : "");
-			setUpdaterName(updatedId ? (nameById.get(updatedId) ?? "") : "");
-		}
-
-		if (category && open) {
-			void resolveNames();
-		}
-
-		return () => {
-			active = false;
-		};
-	}, [category, category?.created_by_id, category?.updated_by_id, open]);
 
 	const isValid = React.useMemo(() => {
 		if (!form) {
@@ -452,6 +416,7 @@ export function CategoryDetailsModal({
 												minRows={childGridMinRows}
 												onRowsChange={onFilteredChildRowsChange}
 												rows={displayedChildRows}
+												showActionsColumn={isAdmin}
 											/>
 										</TableContainer>
 									)}
@@ -484,7 +449,9 @@ export function CategoryDetailsModal({
 										notched
 										readOnly
 										sx={{ "& .MuiInputBase-input": { cursor: "default" } }}
-										value={creatorName || "Không rõ"}
+										value={
+											(category?.created_by_full_name ?? "").trim() || "Không rõ"
+										}
 									/>
 								</FormControl>
 							</Stack>
@@ -512,7 +479,9 @@ export function CategoryDetailsModal({
 										notched
 										readOnly
 										sx={{ "& .MuiInputBase-input": { cursor: "default" } }}
-										value={updaterName || "Không rõ"}
+										value={
+											(category?.updated_by_full_name ?? "").trim() || "Không rõ"
+										}
 									/>
 								</FormControl>
 							</Stack>
