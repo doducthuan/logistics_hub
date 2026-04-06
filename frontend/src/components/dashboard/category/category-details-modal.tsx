@@ -412,12 +412,7 @@ export function CategoryDetailsModal({
 									Không có loại con.
 								</Typography>
 							) : (
-								<Stack spacing={1.5} sx={{ maxWidth: "100%", minWidth: 0 }}>
-									{isAdmin ? (
-										<Typography color="text.secondary" variant="caption">
-											Tab để chuyển ô; Tab / Enter ở ô cuối thêm dòng.
-										</Typography>
-									) : null}
+								<Stack spacing={1.5} sx={{ maxWidth: "100%", minWidth: 0 }}>									
 									<FormControl fullWidth size="small">
 										<OutlinedInput
 											placeholder="Tìm kiếm"
