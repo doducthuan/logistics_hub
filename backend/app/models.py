@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import EmailStr, field_validator
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -147,6 +147,57 @@ class AccountPublic(AccountBase):
 
 class AccountsPublic(SQLModel):
     data: list[AccountPublic]
+    count: int
+
+
+# --- Category (loại mặt hàng — cây phân cấp parent_id) ---
+
+
+class CategoryCore(SQLModel):
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=2000)
+    parent_id: uuid.UUID | None = Field(default=None, foreign_key="category.id")
+
+
+class CategoryCreate(CategoryCore):
+    pass
+
+
+class CategoryUpdate(SQLModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=2000)
+    is_active: bool | None = None
+
+
+class Category(CategoryCore, EntityBase, table=True):
+    __table_args__ = (UniqueConstraint("parent_id", "name", name="uq_category_parent_name"),)
+
+    parent: Optional["Category"] = Relationship(
+        back_populates="children",
+        sa_relationship_kwargs={
+            "remote_side": lambda: [Category.id],
+            "foreign_keys": lambda: [Category.parent_id],
+        },
+    )
+    children: list["Category"] = Relationship(
+        back_populates="parent",
+        sa_relationship_kwargs={
+            "foreign_keys": lambda: [Category.parent_id],
+        },
+    )
+
+
+class CategoryPublic(CategoryCore):
+    id: uuid.UUID
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    created_by_id: uuid.UUID | None = None
+    updated_by_id: uuid.UUID | None = None
+    is_active: bool = True
+
+
+class CategoriesPublic(SQLModel):
+    data: list[CategoryPublic]
     count: int
 
 

@@ -104,7 +104,7 @@ def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         init_db(session)
         yield session
-        session.execute(text("TRUNCATE TABLE item, account CASCADE"))
+        session.execute(text("TRUNCATE TABLE category, item, account CASCADE"))
         session.commit()
 
 

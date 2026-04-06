@@ -9,6 +9,9 @@ from app.models import (
     AccountCreate,
     AccountRole,
     AccountUpdate,
+    Category,
+    CategoryCreate,
+    CategoryUpdate,
     Item,
     ItemCreate,
 )
@@ -153,4 +156,81 @@ def create_item(*, session: Session, item_in: ItemCreate, owner_id: uuid.UUID) -
 
 def account_has_children(*, session: Session, account_id: uuid.UUID) -> bool:
     statement = select(Account.id).where(col(Account.parent_id) == account_id).limit(1)
+    return session.exec(statement).first() is not None
+
+
+def get_category_by_name_under_parent(
+    *,
+    session: Session,
+    name: str,
+    parent_id: uuid.UUID | None,
+) -> Category | None:
+    statement = select(Category).where(Category.name == name)
+    if parent_id is None:
+        statement = statement.where(col(Category.parent_id).is_(None))
+    else:
+        statement = statement.where(Category.parent_id == parent_id)
+    return session.exec(statement).first()
+
+
+def create_category(
+    *,
+    session: Session,
+    category_in: CategoryCreate,
+    created_by_id: uuid.UUID,
+) -> Category:
+    if category_in.parent_id is not None:
+        parent = session.get(Category, category_in.parent_id)
+        if parent is None:
+            raise ValueError("Danh mục cha không tồn tại")
+    if get_category_by_name_under_parent(
+        session=session, name=category_in.name, parent_id=category_in.parent_id
+    ):
+        raise ValueError("Tên loại mặt hàng đã tồn tại trong cùng cấp")
+
+    db_obj = Category(
+        name=category_in.name,
+        description=category_in.description,
+        parent_id=category_in.parent_id,
+        created_by_id=created_by_id,
+        updated_by_id=created_by_id,
+    )
+    session.add(db_obj)
+    session.commit()
+    session.refresh(db_obj)
+    return db_obj
+
+
+def update_category(
+    *,
+    session: Session,
+    db_category: Category,
+    category_in: CategoryUpdate,
+    updated_by_id: uuid.UUID,
+) -> Category:
+    from datetime import datetime, timezone
+
+    data = category_in.model_dump(exclude_unset=True)
+    new_name = data.get("name", db_category.name)
+    new_parent_id = db_category.parent_id
+    if "name" in data and new_name != db_category.name:
+        existing = get_category_by_name_under_parent(
+            session=session, name=new_name, parent_id=new_parent_id
+        )
+        if existing and existing.id != db_category.id:
+            raise ValueError("Tên loại mặt hàng đã tồn tại trong cùng cấp")
+
+    extra: dict[str, Any] = {
+        "updated_by_id": updated_by_id,
+        "updated_at": datetime.now(timezone.utc),
+    }
+    db_category.sqlmodel_update(data, update=extra)
+    session.add(db_category)
+    session.commit()
+    session.refresh(db_category)
+    return db_category
+
+
+def category_has_children(*, session: Session, category_id: uuid.UUID) -> bool:
+    statement = select(Category.id).where(col(Category.parent_id) == category_id).limit(1)
     return session.exec(statement).first() is not None
