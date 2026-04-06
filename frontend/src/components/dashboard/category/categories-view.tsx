@@ -18,7 +18,7 @@ import { useAuth } from "@/components/auth/custom/auth-context";
 import { CategoriesTable } from "./categories-table";
 import { CategoryCreateModal } from "./category-create-modal";
 import { CategoryDetailsModal } from "./category-details-modal";
-import { AccountsPagination } from "../account/accounts-pagination";
+import { ListPagination } from "@/components/core/list-pagination";
 import type { CategoriesApiResponse, CategoryItem } from "./types";
 
 const DEFAULT_SERVER_PAGE_SIZE = 10;
@@ -193,7 +193,7 @@ export function CategoriesView({ initialPayload = null }: CategoriesViewProps): 
 							</Box>
 						</Box>
 						<Divider />
-						<AccountsPagination
+						<ListPagination
 							count={count}
 							onPageChange={(newPage) => {
 								setPage(newPage);
@@ -203,6 +203,7 @@ export function CategoriesView({ initialPayload = null }: CategoriesViewProps): 
 								setPage(0);
 							}}
 							page={page}
+							recordLabelPlural="loại mặt hàng"
 							rowsPerPage={rowsPerPage}
 						/>
 					</Card>

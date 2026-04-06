@@ -15,7 +15,7 @@ import { PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 
 import { AccountCreateModal } from "./account-create-modal";
 import { AccountDetailsModal } from "./account-details-modal";
-import { AccountsPagination } from "./accounts-pagination";
+import { ListPagination } from "@/components/core/list-pagination";
 import { AccountsTable } from "./accounts-table";
 import type { AccountItem, AccountsApiResponse } from "./types";
 
@@ -198,7 +198,7 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 							</Box>
 						</Box>
 						<Divider />
-						<AccountsPagination
+						<ListPagination
 							count={count}
 							onPageChange={(newPage) => {
 								setPage(newPage);
@@ -208,6 +208,7 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 								setPage(0);
 							}}
 							page={page}
+							recordLabelPlural="tài khoản"
 							rowsPerPage={rowsPerPage}
 						/>
 					</Card>

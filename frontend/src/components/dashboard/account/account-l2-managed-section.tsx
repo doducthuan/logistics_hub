@@ -11,7 +11,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 import { AccountL2ChildrenTable } from "./account-l2-children-table";
-import { AccountsPagination } from "./accounts-pagination";
+import { ListPagination } from "@/components/core/list-pagination";
 import type { AccountItem } from "./types";
 
 function extractErrorMessage(payload: unknown): string {
@@ -210,7 +210,7 @@ export function AccountL2ManagedSection({ parentId, enabled }: AccountL2ManagedS
 					</Typography>
 				) : null}
 				<Divider />
-				<AccountsPagination
+				<ListPagination
 					compact
 					count={count}
 					onPageChange={(newPage) => {
@@ -221,6 +221,7 @@ export function AccountL2ManagedSection({ parentId, enabled }: AccountL2ManagedS
 						setPage(0);
 					}}
 					page={page}
+					recordLabelPlural="tài khoản"
 					rowsPerPage={rowsPerPage}
 				/>
 			</Stack>
