@@ -123,12 +123,45 @@ export async function requestPasswordRecoveryEmail(email: string): Promise<{ ok:
 		cache: "no-store",
 	});
 
-	if (!res.ok) {
-		const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+	const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+
+	if (res.status === 429) {
 		const detail =
 			typeof data.detail === "string"
 				? data.detail
-				: "Could not send recovery email. Please try again later.";
+				: "Quá nhiều yêu cầu. Vui lòng thử lại sau vài phút.";
+		return { error: detail };
+	}
+
+	if (!res.ok) {
+		const detail =
+			typeof data.detail === "string"
+				? data.detail
+				: "Không thể gửi email khôi phục. Vui lòng thử lại sau.";
+		return { error: detail };
+	}
+
+	return { ok: true };
+}
+
+export async function submitPasswordReset(
+	token: string,
+	newPassword: string
+): Promise<{ ok: true } | { error: string }> {
+	const res = await fetch(`${getApiBaseUrl()}/api/v1/reset-password/`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", Accept: "application/json" },
+		body: JSON.stringify({ token, new_password: newPassword }),
+		cache: "no-store",
+	});
+
+	const data = (await res.json().catch(() => ({}))) as { detail?: unknown; message?: string };
+
+	if (!res.ok) {
+		const detail =
+			typeof data.detail === "string"
+				? data.detail
+				: "Không thể đặt lại mật khẩu. Vui lòng thử lại.";
 		return { error: detail };
 	}
 

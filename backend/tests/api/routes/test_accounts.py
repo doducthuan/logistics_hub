@@ -586,10 +586,7 @@ def test_register_account_already_exists_error(client: TestClient, db: Session) 
         json=data,
     )
     assert r.status_code == 400
-    assert (
-        r.json()["detail"]
-        == "The account with this email already exists in the system"
-    )
+    assert r.json()["detail"] == "Tài khoản với email này đã tồn tại trong hệ thống."
 
 
 def test_update_account(

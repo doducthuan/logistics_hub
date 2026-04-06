@@ -7,6 +7,7 @@ import {
 	loginAccessToken,
 	mapAccountToUser,
 	requestPasswordRecoveryEmail,
+	submitPasswordReset,
 } from "./api";
 import type { User } from "./types";
 
@@ -90,8 +91,26 @@ export async function resetPassword(params: ResetPasswordParams): Promise<{ erro
 	return {};
 }
 
-export async function updatePassword(_: ResetPasswordParams): Promise<{ error?: string }> {
-	return { error: "Update password not implemented" };
+export interface CompletePasswordResetParams {
+	token: string;
+	newPassword: string;
+}
+
+export async function completePasswordReset(
+	params: CompletePasswordResetParams
+): Promise<{ error?: string }> {
+	let result;
+	try {
+		result = await submitPasswordReset(params.token, params.newPassword);
+	} catch {
+		return { error: "Không thể kết nối máy chủ. Kiểm tra NEXT_PUBLIC_API_URL." };
+	}
+
+	if ("error" in result) {
+		return { error: result.error };
+	}
+
+	return {};
 }
 
 export async function signOut(): Promise<{ error?: string }> {

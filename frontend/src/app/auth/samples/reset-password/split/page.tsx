@@ -46,7 +46,7 @@ export default function Page(): React.JSX.Element {
 						<OutlinedInput name="email" type="email" />
 					</FormControl>
 					<Button type="submit" variant="contained">
-						Send recovery link
+						Gửi liên kết khôi phục mật khẩu
 					</Button>
 				</Stack>
 			</Stack>

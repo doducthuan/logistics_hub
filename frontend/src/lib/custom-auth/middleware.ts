@@ -16,6 +16,7 @@ function isPublicPath(pathname: string): boolean {
 	if (p === paths.home) return true;
 	if (p === paths.login) return true;
 	if (p === paths.forgotPassword) return true;
+	if (p === paths.setNewPassword) return true;
 	if (p === paths.auth.custom.profile) return true;
 	if (p === paths.auth.custom.resetPassword) return true;
 	if (p === paths.auth.custom.signOut) return true;

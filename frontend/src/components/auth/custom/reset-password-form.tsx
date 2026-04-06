@@ -89,7 +89,7 @@ export function ResetPasswordForm({ variant = "split" }: ResetPasswordFormProps)
 				/>
 				{errors.root ? <Alert color="error">{errors.root.message}</Alert> : null}
 				<Button disabled={isPending} type="submit" variant="contained">
-					Send recovery link
+					Gửi liên kết khôi phục mật khẩu
 				</Button>
 			</Stack>
 		</form>
@@ -103,23 +103,22 @@ export function ResetPasswordForm({ variant = "split" }: ResetPasswordFormProps)
 					<CardHeader
 						subheader={
 							<Typography color="text.secondary" variant="body2">
-								Enter your email and we&apos;ll send recovery instructions if an account exists.
+								Nhập email của bạn và chúng tôi sẽ gửi hướng dẫn khôi phục mật khẩu nếu tài khoản tồn tại.
 							</Typography>
 						}
-						title="Forgot password"
+						title="Quên mật khẩu"
 					/>
 					<CardContent>
 						{submitted ? (
 							<Alert severity="success">
-								If that email is registered, we sent a password recovery link. You can close this page or return to
-								sign in.
+								Nếu email đã đăng ký, chúng tôi đã gửi liên kết khôi phục mật khẩu. Bạn có thể đóng trang này hoặc quay lại đăng nhập.
 							</Alert>
 						) : (
 							formBody
 						)}
 						<Box sx={{ mt: 2 }}>
 							<Link component={RouterLink} href={paths.login} variant="subtitle2">
-								Back to sign in
+								Quay lại đăng nhập
 							</Link>
 						</Box>
 					</CardContent>
@@ -131,7 +130,7 @@ export function ResetPasswordForm({ variant = "split" }: ResetPasswordFormProps)
 	return (
 		<Stack spacing={4}>
 			{logo}
-			<Typography variant="h5">Reset password</Typography>
+			<Typography variant="h5">Quên mật khẩu</Typography>
 			{formBody}
 		</Stack>
 	);

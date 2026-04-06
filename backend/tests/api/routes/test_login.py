@@ -65,7 +65,7 @@ def test_recovery_password(
         )
         assert r.status_code == 200
         assert r.json() == {
-            "message": "If that email is registered, we sent a password recovery link"
+            "message": "Nếu email đã đăng ký, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu."
         }
 
 
@@ -79,8 +79,31 @@ def test_recovery_password_user_not_exits(
     )
     assert r.status_code == 200
     assert r.json() == {
-        "message": "If that email is registered, we sent a password recovery link"
+        "message": "Nếu email đã đăng ký, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu."
     }
+
+
+def test_recovery_password_rate_limited_by_ip(
+    client: TestClient, normal_user_token_headers: dict[str, str]
+) -> None:
+    """Sau PASSWORD_RESET_MAX_PER_IP_PER_HOUR yêu cầu từ cùng IP → 429."""
+    with (
+        patch("app.core.config.settings.SMTP_HOST", "smtp.example.com"),
+        patch("app.core.config.settings.SMTP_USER", "admin@example.com"),
+    ):
+        max_ip = settings.PASSWORD_RESET_MAX_PER_IP_PER_HOUR
+        for i in range(max_ip):
+            r = client.post(
+                f"{settings.API_V1_STR}/password-recovery/rate{i}@example.com",
+                headers=normal_user_token_headers,
+            )
+            assert r.status_code == 200, i
+        r = client.post(
+            f"{settings.API_V1_STR}/password-recovery/rate_overflow@example.com",
+            headers=normal_user_token_headers,
+        )
+        assert r.status_code == 429
+        assert "Quá nhiều yêu cầu" in r.json()["detail"]
 
 
 def test_reset_password(client: TestClient, db: Session) -> None:
@@ -110,7 +133,9 @@ def test_reset_password(client: TestClient, db: Session) -> None:
     )
 
     assert r.status_code == 200
-    assert r.json() == {"message": "Password updated successfully"}
+    assert r.json() == {
+        "message": "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập."
+    }
 
     db.refresh(user)
     verified, _ = verify_password(new_password, user.hashed_password)
@@ -130,7 +155,7 @@ def test_reset_password_invalid_token(
 
     assert "detail" in response
     assert r.status_code == 400
-    assert response["detail"] == "Invalid token"
+    assert response["detail"] == "Liên kết không hợp lệ hoặc đã hết hạn."
 
 
 def test_login_with_bcrypt_password_upgrades_to_argon2(

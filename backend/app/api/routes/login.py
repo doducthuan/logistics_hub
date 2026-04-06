@@ -1,7 +1,8 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -9,6 +10,7 @@ from app import crud
 from app.api.deps import CurrentAccount, SessionDep, get_current_active_admin
 from app.core import security
 from app.core.config import settings
+from app.core.password_reset_rate_limit import allow as rate_limit_allow
 from app.models import AccountPublic, AccountUpdate, Message, NewPassword, Token
 from app.utils import (
     generate_password_reset_token,
@@ -16,6 +18,17 @@ from app.utils import (
     send_email,
     verify_password_reset_token,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
 
 router = APIRouter(tags=["login"])
 
@@ -55,43 +68,75 @@ def test_token(current_account: CurrentAccount) -> Any:
 
 
 @router.post("/password-recovery/{email}")
-def recover_password(email: str, session: SessionDep) -> Message:
+def recover_password(request: Request, email: str, session: SessionDep) -> Message:
     """
-    Password Recovery
+    Gửi email đặt lại mật khẩu (nếu cấu hình SMTP). Luôn trả cùng một thông báo để giảm lộ email có tồn tại.
+    Giới hạn tần suất theo IP và theo email.
     """
-    account = crud.get_account_by_email(session=session, email=email)
+    normalized = email.strip().lower()
+    window_sec = float(settings.PASSWORD_RESET_RATE_LIMIT_WINDOW_HOURS * 3600)
 
-    # Always return the same response to prevent email enumeration attacks
-    # Only send email if user actually exists
-    if account:
-        password_reset_token = generate_password_reset_token(email=email)
-        email_data = generate_reset_password_email(
-            email_to=account.email, email=email, token=password_reset_token
+    if not rate_limit_allow(
+        f"pwd_reset:ip:{_client_ip(request)}",
+        max_requests=settings.PASSWORD_RESET_MAX_PER_IP_PER_HOUR,
+        window_seconds=window_sec,
+    ):
+        raise HTTPException(
+            status_code=429,
+            detail="Quá nhiều yêu cầu. Vui lòng thử lại sau vài phút.",
         )
-        send_email(
-            email_to=account.email,
-            subject=email_data.subject,
-            html_content=email_data.html_content,
+    if not rate_limit_allow(
+        f"pwd_reset:email:{normalized}",
+        max_requests=settings.PASSWORD_RESET_MAX_PER_EMAIL_PER_HOUR,
+        window_seconds=window_sec,
+    ):
+        raise HTTPException(
+            status_code=429,
+            detail="Quá nhiều yêu cầu cho địa chỉ này. Vui lòng thử lại sau.",
         )
+
+    account = crud.get_account_by_email(session=session, email=normalized)
+
+    if account and settings.emails_enabled:
+        try:
+            password_reset_token = generate_password_reset_token(email=normalized)
+            email_data = generate_reset_password_email(
+                email_to=account.email, email=normalized, token=password_reset_token
+            )
+            send_email(
+                email_to=account.email,
+                subject=email_data.subject,
+                html_content=email_data.html_content,
+            )
+        except Exception:
+            logger.exception("Không gửi được email khôi phục mật khẩu")
+    elif account and not settings.emails_enabled:
+        logger.warning(
+            "Yêu cầu khôi phục mật khẩu nhưng chưa cấu hình SMTP / EMAILS_FROM_EMAIL"
+        )
+
     return Message(
-        message="If that email is registered, we sent a password recovery link"
+        message="Nếu email đã đăng ký, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu."
     )
 
 
 @router.post("/reset-password/")
 def reset_password(session: SessionDep, body: NewPassword) -> Message:
-    """
-    Reset password
-    """
+    """Đặt lại mật khẩu bằng token gửi qua email."""
     email = verify_password_reset_token(token=body.token)
     if not email:
-        raise HTTPException(status_code=400, detail="Invalid token")
+        raise HTTPException(
+            status_code=400,
+            detail="Liên kết không hợp lệ hoặc đã hết hạn.",
+        )
     account = crud.get_account_by_email(session=session, email=email)
     if not account:
-        # Don't reveal that the account doesn't exist - use same error as invalid token
-        raise HTTPException(status_code=400, detail="Invalid token")
-    elif not account.is_active:
-        raise HTTPException(status_code=400, detail="Inactive account")
+        raise HTTPException(
+            status_code=400,
+            detail="Liên kết không hợp lệ hoặc đã hết hạn.",
+        )
+    if not account.is_active:
+        raise HTTPException(status_code=400, detail="Tài khoản đang không hoạt động.")
     user_in_update = AccountUpdate(password=body.new_password)
     crud.update_account(
         session=session,
@@ -99,7 +144,7 @@ def reset_password(session: SessionDep, body: NewPassword) -> Message:
         account_in=user_in_update,
         updated_by_id=None,
     )
-    return Message(message="Password updated successfully")
+    return Message(message="Đặt lại mật khẩu thành công. Bạn có thể đăng nhập.")
 
 
 @router.post(

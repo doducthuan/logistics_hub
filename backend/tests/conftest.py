@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from pathlib import Path
 
 # --- Bootstrap: must run before `from app...` (Settings + engine bind once) ---
@@ -97,6 +97,14 @@ from app.core.db import engine, init_db
 from app.main import app
 from tests.utils.account import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
+
+
+@pytest.fixture(autouse=True)
+def _reset_password_rate_limit_state() -> Iterator[None]:
+    from app.core.password_reset_rate_limit import reset_state_for_tests
+
+    reset_state_for_tests()
+    yield
 
 
 @pytest.fixture(scope="session", autouse=True)

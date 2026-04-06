@@ -1,6 +1,7 @@
 import uuid
 from typing import Any
 
+from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.core.security import get_password_hash, verify_password
@@ -35,7 +36,8 @@ def validate_account_hierarchy(
 
 
 def get_account_by_email(*, session: Session, email: str) -> Account | None:
-    statement = select(Account).where(Account.email == email)
+    normalized = email.strip().lower()
+    statement = select(Account).where(func.lower(Account.email) == normalized)
     return session.exec(statement).first()
 
 

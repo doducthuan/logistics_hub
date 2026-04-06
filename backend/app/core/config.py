@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = secrets.token_urlsafe(32)
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
-    FRONTEND_HOST: str = "http://localhost:5173"
+    FRONTEND_HOST: str = "http://localhost:3000"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
 
     BACKEND_CORS_ORIGINS: Annotated[
@@ -84,6 +84,13 @@ class Settings(BaseSettings):
         return self
 
     EMAIL_RESET_TOKEN_EXPIRE_HOURS: int = 48
+    """Đường dẫn trên frontend (sau FRONTEND_HOST), ví dụ /reset-password?token=…"""
+    PASSWORD_RESET_LINK_PATH: str = "/reset-password"
+    # Mỗi email: tối đa bấy nhiêu lần gửi / cửa sổ (giờ)
+    PASSWORD_RESET_MAX_PER_EMAIL_PER_HOUR: int = 3
+    # Mỗi IP: tối đa bấy nhiêu lần / cửa sổ (giờ) — chống quét email
+    PASSWORD_RESET_MAX_PER_IP_PER_HOUR: int = 15
+    PASSWORD_RESET_RATE_LIMIT_WINDOW_HOURS: int = 1
 
     @computed_field  # type: ignore[prop-decorator]
     @property
