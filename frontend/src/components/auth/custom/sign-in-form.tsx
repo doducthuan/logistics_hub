@@ -107,6 +107,7 @@ export function SignInForm({ variant = "full", callbackUrl = null }: SignInFormP
 
 			if (variant === "app") {
 				router.push(getSafeCallbackPath(callbackUrl));
+				return;
 			}
 
 			router.refresh();

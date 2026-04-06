@@ -2,12 +2,7 @@
 
 import { cookies } from "next/headers";
 
-import {
-	fetchAccountByAccessToken,
-	loginAccessToken,
-	mapAccountToUser,
-	requestPasswordRecoveryEmail,
-} from "./api";
+import { loginAccessToken, mapAccountToUser, requestPasswordRecoveryEmail } from "./api";
 import type { User } from "./types";
 
 /** Match backend default: ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 8 */
@@ -66,13 +61,7 @@ export async function signInWithPassword(
 		maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
 	});
 
-	const account = await fetchAccountByAccessToken(tokenResult.access_token);
-	if (!account) {
-		cookieStore.delete("access_token");
-		return { error: "Could not load your profile after login." };
-	}
-
-	return { data: { user: mapAccountToUser(account) } };
+	return { data: { user: mapAccountToUser(tokenResult.user) } };
 }
 
 export async function resetPassword(params: ResetPasswordParams): Promise<{ error?: string }> {

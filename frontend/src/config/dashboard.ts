@@ -45,6 +45,7 @@ export const dashboardConfig = {
 					href: paths.dashboard.accounts.list,
 					icon: "users",
 					matcher: { type: "startsWith", href: "/dashboard/accounts" },
+					prefetch: false,
 				},
 				{
 					key: "customers",

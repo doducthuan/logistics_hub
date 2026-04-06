@@ -19,6 +19,13 @@ import { AccountsPagination } from "./accounts-pagination";
 import { AccountsTable } from "./accounts-table";
 import type { AccountItem, AccountsApiResponse } from "./types";
 
+const DEFAULT_SERVER_PAGE_SIZE = 10;
+
+export interface AccountsViewProps {
+	/** Dữ liệu trang đầu từ RSC — tránh gọi /api/accounts hai lần khi Strict Mode chạy effect hai lần. */
+	initialPayload?: AccountsApiResponse | null;
+}
+
 function extractErrorMessage(payload: unknown): string {
 	if (payload && typeof payload === "object" && "detail" in payload && typeof payload.detail === "string") {
 		return payload.detail;
@@ -26,13 +33,14 @@ function extractErrorMessage(payload: unknown): string {
 	return "Failed to load accounts";
 }
 
-export function AccountsView(): React.JSX.Element {
-	const [loading, setLoading] = React.useState(true);
+export function AccountsView({ initialPayload = null }: AccountsViewProps): React.JSX.Element {
+	const hasInitial = initialPayload != null;
+	const [loading, setLoading] = React.useState(!hasInitial);
 	const [error, setError] = React.useState<string | null>(null);
-	const [currentAccount, setCurrentAccount] = React.useState<AccountItem | null>(null);
-	const [managedAccounts, setManagedAccounts] = React.useState<AccountItem[]>([]);
-	const [allScopeAccounts, setAllScopeAccounts] = React.useState<AccountItem[]>([]);
-	const [count, setCount] = React.useState(0);
+	const [currentAccount, setCurrentAccount] = React.useState<AccountItem | null>(initialPayload?.current ?? null);
+	const [managedAccounts, setManagedAccounts] = React.useState<AccountItem[]>(initialPayload?.data ?? []);
+	const [allScopeAccounts, setAllScopeAccounts] = React.useState<AccountItem[]>(initialPayload?.data ?? []);
+	const [count, setCount] = React.useState(initialPayload?.count ?? 0);
 	const [page, setPage] = React.useState(0);
 	const [rowsPerPage, setRowsPerPage] = React.useState(10);
 	const [searchText, setSearchText] = React.useState("");
@@ -42,6 +50,9 @@ export function AccountsView(): React.JSX.Element {
 	const [createOpen, setCreateOpen] = React.useState(false);
 	const [detailsOpen, setDetailsOpen] = React.useState(false);
 	const [selectedAccount, setSelectedAccount] = React.useState<AccountItem | null>(null);
+
+	/** Có payload từ RSC lúc mount — không refetch client khi vẫn đúng trang/filter khớp server. */
+	const hadInitialOnMountRef = React.useRef(hasInitial);
 
 	const loadData = React.useCallback(async () => {
 		setLoading(true);
@@ -76,8 +87,15 @@ export function AccountsView(): React.JSX.Element {
 	}, [appliedKeyword, page, rowsPerPage]);
 
 	React.useEffect(() => {
+		if (hadInitialOnMountRef.current) {
+			const alignedWithServerInitial =
+				page === 0 && rowsPerPage === DEFAULT_SERVER_PAGE_SIZE && appliedKeyword === "";
+			if (alignedWithServerInitial) {
+				return;
+			}
+		}
 		void loadData();
-	}, [loadData]);
+	}, [loadData, page, rowsPerPage, appliedKeyword]);
 
 	/** Khi tổng số trang giảm (đổi page size / filter) hoặc hết dữ liệu, giữ page hợp lệ. */
 	React.useEffect(() => {

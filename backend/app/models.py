@@ -194,8 +194,11 @@ class Message(SQLModel):
 
 
 class Token(SQLModel):
+    """OAuth2 token; `user` là snapshot profile khi login (tránh round-trip GET /accounts/me)."""
+
     access_token: str
     token_type: str = "bearer"
+    user: AccountPublic | None = None
 
 
 class TokenPayload(SQLModel):
