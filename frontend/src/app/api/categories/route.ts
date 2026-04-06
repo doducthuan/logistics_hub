@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { fetchAccountsPageForCurrentSession } from "@/lib/accounts/fetch-accounts-server";
+import { fetchCategoriesPageForCurrentSession } from "@/lib/categories/fetch-categories-server";
 import { getApiBaseUrl } from "@/lib/custom-auth/api";
 
 async function getAccessToken(): Promise<string | null> {
@@ -15,11 +15,13 @@ function unauthorizedResponse(): NextResponse {
 
 export async function GET(request: Request): Promise<NextResponse> {
 	const url = new URL(request.url);
+	const parentIdRaw = url.searchParams.get("parentId")?.trim();
+	const parentId = parentIdRaw && parentIdRaw.length > 0 ? parentIdRaw : null;
 	const page = Math.max(0, Number.parseInt(url.searchParams.get("page") ?? "0", 10) || 0);
 	const pageSize = Math.max(1, Number.parseInt(url.searchParams.get("pageSize") ?? "10", 10) || 10);
 	const keyword = url.searchParams.get("keyword")?.trim() ?? "";
 
-	const result = await fetchAccountsPageForCurrentSession({ page, pageSize, keyword });
+	const result = await fetchCategoriesPageForCurrentSession({ parentId, page, pageSize, keyword });
 
 	if (!result.ok) {
 		return NextResponse.json({ detail: result.detail }, { status: result.status });
@@ -30,32 +32,13 @@ export async function GET(request: Request): Promise<NextResponse> {
 
 export async function POST(request: Request): Promise<NextResponse> {
 	const accessToken = await getAccessToken();
-
 	if (!accessToken) {
 		return unauthorizedResponse();
 	}
 
-	const meHeaders = {
-		Authorization: `Bearer ${accessToken}`,
-		Accept: "application/json",
-	};
-	const currentRes = await fetch(`${getApiBaseUrl()}/api/v1/accounts/me`, {
-		method: "GET",
-		headers: meHeaders,
-		cache: "no-store",
-	});
-	if (!currentRes.ok) {
-		const detail = await currentRes.text();
-		return NextResponse.json({ detail: detail || "Unable to fetch current account" }, { status: currentRes.status });
-	}
-	const current = (await currentRes.json()) as { role: string };
-	if (current.role === "user_level_2") {
-		return NextResponse.json({ detail: "Not enough permissions" }, { status: 403 });
-	}
-
 	const body = (await request.json()) as unknown;
 
-	const response = await fetch(`${getApiBaseUrl()}/api/v1/accounts/`, {
+	const response = await fetch(`${getApiBaseUrl()}/api/v1/categories/`, {
 		method: "POST",
 		headers: {
 			Authorization: `Bearer ${accessToken}`,
@@ -67,6 +50,5 @@ export async function POST(request: Request): Promise<NextResponse> {
 	});
 
 	const data = (await response.json().catch(() => ({}))) as unknown;
-
 	return NextResponse.json(data, { status: response.status });
 }

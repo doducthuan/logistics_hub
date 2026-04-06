@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { paths } from "@/paths";
 import { validateAccessToken } from "@/lib/custom-auth/api";
+import { hasJwtSecretConfigured, isJwtAccessTokenValid } from "@/lib/custom-auth/jwt-verify";
 
 function normalizePath(pathname: string): string {
 	if (pathname.length > 1 && pathname.endsWith("/")) {
@@ -42,7 +43,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 		return redirectToLogin(req);
 	}
 
-	const valid = await validateAccessToken(token);
+	const valid = hasJwtSecretConfigured()
+		? await isJwtAccessTokenValid(token)
+		: await validateAccessToken(token);
 	if (!valid) {
 		const res = redirectToLogin(req);
 		res.cookies.set("access_token", "", {

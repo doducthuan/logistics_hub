@@ -151,14 +151,14 @@ export function AccountL2ChildrenTable({ compact = false, rows }: AccountL2Child
 				name: "Email",
 				width: "220px",
 				formatter: (row) => (
-					<div>
-						<Typography sx={{ wordBreak: "break-all" }} variant={secondaryVariant}>
+					<Stack spacing={0.25} sx={{ minWidth: 0 }}>
+						<Typography component="div" sx={{ wordBreak: "break-all" }} variant={secondaryVariant}>
 							{row.email}
 						</Typography>
-						<Typography color="text.secondary" variant={secondaryVariant}>
-							{row.created_at ? `${dayjs(row.created_at).format("DD/MM/YYYY")}` : "—"}
+						<Typography color="text.secondary" component="div" variant={secondaryVariant}>
+							{row.created_at ? `Ngày tạo: ${dayjs(row.created_at).format("DD/MM/YYYY")}` : "—"}
 						</Typography>
-					</div>
+					</Stack>
 				),
 			},
 			{

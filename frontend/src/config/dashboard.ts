@@ -45,6 +45,15 @@ export const dashboardConfig = {
 					href: paths.dashboard.accounts.list,
 					icon: "users",
 					matcher: { type: "startsWith", href: "/dashboard/accounts" },
+					prefetch: false,
+				},
+				{
+					key: "categories",
+					title: "Loại mặt hàng",
+					href: paths.dashboard.categories.list,
+					icon: "shopping-bag-open",
+					matcher: { type: "startsWith", href: "/dashboard/categories" },
+					prefetch: false,
 				},
 				{
 					key: "customers",

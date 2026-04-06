@@ -8,8 +8,8 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
 import InputAdornment from "@mui/material/InputAdornment";
+import InputLabel from "@mui/material/InputLabel";
 import IconButton from "@mui/material/IconButton";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import Stack from "@mui/material/Stack";
@@ -20,8 +20,12 @@ import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 
 import type { AccountCreatePayload, AccountItem } from "./types";
 
-/** Dấu * bắt buộc trên nhãn — luôn màu đỏ (error) */
+const boldInputLabelFormControlSx = {
+	"& .MuiInputLabel-root": { fontWeight: 600 },
+} as const;
+
 const requiredLabelFormControlSx = {
+	...boldInputLabelFormControlSx,
 	"& .MuiFormLabel-asterisk": { color: "error.main" },
 	"& .MuiInputLabel-asterisk": { color: "error.main" },
 } as const;
@@ -140,7 +144,7 @@ export function AccountCreateModal({
 				component="div"
 				sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", pr: 1.5 }}
 			>
-				<Typography component="span" variant="h6">
+				<Typography component="span" sx={{ fontWeight: 600 }} variant="h6">
 					Tạo tài khoản
 				</Typography>
 				<IconButton onClick={onClose}>
@@ -197,7 +201,7 @@ export function AccountCreateModal({
 								value={form.password}
 							/>
 						</FormControl>
-						<FormControl fullWidth>
+						<FormControl fullWidth sx={boldInputLabelFormControlSx}>
 							<InputLabel>Số điện thoại</InputLabel>
 							<OutlinedInput
 								label="Số điện thoại"
@@ -208,12 +212,12 @@ export function AccountCreateModal({
 							/>
 						</FormControl>
 					</Stack>
-					<FormControl fullWidth>
+					<FormControl fullWidth sx={boldInputLabelFormControlSx}>
 						<InputLabel>Mô tả</InputLabel>
 						<OutlinedInput
 							label="Mô tả"
-							multiline
 							minRows={3}
+							multiline
 							onChange={(event) => {
 								setForm((prev) => ({ ...prev, description: event.target.value }));
 							}}

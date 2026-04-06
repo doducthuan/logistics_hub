@@ -1,6 +1,6 @@
 "use client";
 
-import type * as React from "react";
+import * as React from "react";
 import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
 import MenuItem from "@mui/material/MenuItem";
@@ -11,29 +11,36 @@ import Typography from "@mui/material/Typography";
 
 const ROWS_PER_PAGE_OPTIONS = [5, 10, 25, 50] as const;
 
-export interface AccountsPaginationProps {
+export interface ListPaginationProps {
 	/** Tổng số bản ghi (từ API). */
 	count: number;
-	/** Chỉ số trang 0-based (khớp TablePagination / API `page`). */
+	/** Chỉ số trang 0-based (khớp API `page`). */
 	page: number;
 	rowsPerPage: number;
 	onPageChange: (page: number) => void;
 	onRowsPerPageChange: (rowsPerPage: number) => void;
 	/** Bố cục gọn (modal, bảng phụ). */
 	compact?: boolean;
+	/**
+	 * Tên loại bản ghi sau "Tổng N …" (ví dụ `"tài khoản"`, `"loại mặt hàng"`).
+	 * Mặc định `"bản ghi"` — nên truyền rõ khi ngữ cảnh cụ thể hơn.
+	 */
+	recordLabelPlural?: string;
 }
 
 /**
- * Phân trang danh sách tài khoản: nhãn trang, số trang dạng 1 … 5 6 7 … N, chọn page size.
+ * Phân trang danh sách dạng bảng: chọn page size, nhãn trang, điều hướng số trang.
  */
-export function AccountsPagination({
+export function ListPagination({
 	count,
 	page,
 	rowsPerPage,
 	onPageChange,
 	onRowsPerPageChange,
 	compact = false,
-}: AccountsPaginationProps): React.JSX.Element {
+	recordLabelPlural = "bản ghi",
+}: ListPaginationProps): React.JSX.Element {
+	const rowsSelectId = React.useId();
 	const totalPages = count === 0 ? 0 : Math.max(1, Math.ceil(count / rowsPerPage));
 	const pageOneBased = count === 0 ? 1 : Math.min(page + 1, totalPages);
 
@@ -69,7 +76,7 @@ export function AccountsPagination({
 				>
 					<Select
 						aria-label="Số dòng mỗi trang"
-						id="accounts-rows-per-page"
+						id={rowsSelectId}
 						onChange={(event) => {
 							onRowsPerPageChange(Number(event.target.value));
 						}}
@@ -98,12 +105,14 @@ export function AccountsPagination({
 					variant={compact ? "caption" : "body2"}
 				>
 					{count === 0 ? (
-						<>Chưa có dữ liệu · Tổng 0 tài khoản</>
+						<>
+							Chưa có dữ liệu · Tổng 0 {recordLabelPlural}
+						</>
 					) : (
 						<>
 							Trang <strong>{pageOneBased}</strong> / <strong>{totalPages}</strong>
 							{" · "}
-							Tổng <strong>{count}</strong> tài khoản
+							Tổng <strong>{count}</strong> {recordLabelPlural}
 						</>
 					)}
 				</Typography>

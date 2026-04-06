@@ -6,42 +6,30 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { CopyIcon } from "@phosphor-icons/react/dist/ssr/Copy";
 import { EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
 
 import { dayjs } from "@/lib/dayjs";
 import type { ColumnDef } from "@/components/core/data-table";
 import { DataTable } from "@/components/core/data-table";
-import { toast } from "@/components/core/toaster";
 
-import type { AccountItem } from "./types";
+import type { CategoryItem } from "./types";
 
-
-export interface AccountsTableProps {
-	rows: AccountItem[];
+export interface CategoriesTableProps {
+	rows: CategoryItem[];
 	loading?: boolean;
 	page: number;
 	rowsPerPage: number;
-	onView: (account: AccountItem) => void;
+	onView: (row: CategoryItem) => void;
 }
 
-export function AccountsTable({
+export function CategoriesTable({
 	rows,
 	loading = false,
 	page,
 	rowsPerPage,
 	onView,
-}: AccountsTableProps): React.JSX.Element {
-	const handleCopyPhone = React.useCallback(async (phone: string): Promise<void> => {
-		try {
-			await navigator.clipboard.writeText(phone);
-			toast.success("Đã copy số điện thoại");
-		} catch {
-			toast.error("Không thể copy số điện thoại");
-		}
-	}, []);
-
-	const columns = React.useMemo<ColumnDef<AccountItem>[]>(
+}: CategoriesTableProps): React.JSX.Element {
+	const columns = React.useMemo<ColumnDef<CategoryItem>[]>(
 		() => [
 			{
 				name: "STT",
@@ -50,49 +38,23 @@ export function AccountsTable({
 				formatter: (_row, index) => page * rowsPerPage + index + 1,
 			},
 			{
-				name: "Tài khoản",
-				width: "260px",
+				name: "Tên",
+				width: "220px",
 				formatter: (row) => (
-					<div>
-						<Typography sx={{ whiteSpace: "nowrap" }} variant="subtitle2">
-							{row.full_name}
-						</Typography>
-						{row.phone ? (
-							<Stack alignItems="center" direction="row" spacing={0.5}>
-								<Typography color="text.secondary" variant="body2">
-									{row.phone}
-								</Typography>
-								<Tooltip title="Copy số điện thoại">
-									<IconButton
-										aria-label="Copy số điện thoại"
-										onClick={() => {
-											void handleCopyPhone(row.phone!);
-										}}
-										size="small"
-										sx={{ p: 0.25 }}
-									>
-										<CopyIcon size={14} />
-									</IconButton>
-								</Tooltip>
-							</Stack>
-						) : (
-							<Typography color="text.secondary" variant="body2">
-								Chưa có số điện thoại
-							</Typography>
-						)}
-					</div>
+					<Typography sx={{ whiteSpace: "nowrap" }} variant="subtitle2">
+						{row.name}
+					</Typography>
 				),
 			},
-			{ name: "Email", width: "220px", formatter: (row) => row.email },
 			{
 				name: "Mô tả",
-				width: "260px",
-				formatter: (row) => row.description || "—",
+				width: "280px",
+				formatter: (row) => row.description?.trim() || "—",
 			},
 			{
 				name: "Trạng thái",
 				align: "center",
-				width: "120px",
+				width: "140px",
 				formatter: (row) =>
 					row.is_active ? (
 						<Chip color="success" label="Đang hoạt động" size="small" variant="outlined" />
@@ -111,26 +73,29 @@ export function AccountsTable({
 				name: "Thao tác",
 				hideName: true,
 				align: "right",
-				width: "80px",
+				width: "72px",
 				formatter: (row) => (
-					<Stack direction="row" justifyContent="flex-end">
-						<IconButton
-							onClick={() => {
-								onView(row);
-							}}
-						>
-							<EyeIcon />
-						</IconButton>
+					<Stack direction="row" justifyContent="flex-end" spacing={0.5}>
+						<Tooltip title="Xem chi tiết">
+							<IconButton
+								aria-label="Xem chi tiết"
+								onClick={() => {
+									onView(row);
+								}}
+							>
+								<EyeIcon />
+							</IconButton>
+						</Tooltip>
 					</Stack>
 				),
 			},
 		],
-		[handleCopyPhone, onView, page, rowsPerPage]
+		[onView, page, rowsPerPage]
 	);
 
 	return (
 		<React.Fragment>
-			<DataTable<AccountItem>
+			<DataTable<CategoryItem>
 				columns={columns}
 				headCellSx={(theme) => ({
 					color:

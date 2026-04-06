@@ -168,6 +168,7 @@ function NavItem({
 	matcher,
 	onClose,
 	pathname,
+	prefetch,
 	title,
 }: NavItemProps): React.JSX.Element {
 	const [open, setOpen] = React.useState<boolean>(forceOpen);
@@ -199,6 +200,7 @@ function NavItem({
 										href,
 										target: external ? "_blank" : undefined,
 										rel: external ? "noreferrer" : undefined,
+										...(!external && prefetch === false ? { prefetch: false } : {}),
 										onClick: (): void => {
 											onClose?.();
 										},

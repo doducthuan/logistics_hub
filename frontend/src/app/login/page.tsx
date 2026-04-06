@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { appConfig } from "@/config/app";
 import { paths } from "@/paths";
-import { getUser } from "@/lib/custom-auth/server";
+import { hasValidSessionCookie } from "@/lib/custom-auth/session-cookie";
 import { getSafeCallbackPath } from "@/lib/safe-callback-url";
 import { logger } from "@/lib/default-logger";
 import { SignInForm } from "@/components/auth/custom/sign-in-form";
@@ -17,10 +17,9 @@ interface PageProps {
 }
 
 export default async function Page({ searchParams }: PageProps): Promise<React.JSX.Element> {
-	const { data } = await getUser();
 	const sp = await searchParams;
 
-	if (data?.user) {
+	if (await hasValidSessionCookie()) {
 		logger.debug("[Login] User is authenticated, redirecting");
 		redirect(getSafeCallbackPath(sp.callbackUrl));
 	}

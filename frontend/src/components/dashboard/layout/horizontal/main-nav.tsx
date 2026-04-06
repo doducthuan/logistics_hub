@@ -308,6 +308,7 @@ function NavItem({
 	label,
 	matcher,
 	pathname,
+	prefetch,
 	title,
 }: NavItemProps): React.JSX.Element {
 	const active = isNavItemActive({ disabled, external, href, matcher, pathname });
@@ -326,6 +327,7 @@ function NavItem({
 										href,
 										target: external ? "_blank" : undefined,
 										rel: external ? "noreferrer" : undefined,
+										...(!external && prefetch === false ? { prefetch: false } : {}),
 									}
 								: { role: "button" }),
 						})}
@@ -435,6 +437,7 @@ function DropdownItem({
 	href,
 	matcher,
 	pathname,
+	prefetch,
 	title,
 }: DropdownItemProps): React.JSX.Element {
 	const active = isNavItemActive({ disabled, external, href, matcher, pathname });
@@ -452,6 +455,7 @@ function DropdownItem({
 										href,
 										target: external ? "_blank" : undefined,
 										rel: external ? "noreferrer" : undefined,
+										...(!external && prefetch === false ? { prefetch: false } : {}),
 									}
 								: { role: "button" }),
 						})}

@@ -11,7 +11,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 import { AccountL2ChildrenTable } from "./account-l2-children-table";
-import { AccountsPagination } from "./accounts-pagination";
+import { ListPagination } from "@/components/core/list-pagination";
 import type { AccountItem } from "./types";
 
 function extractErrorMessage(payload: unknown): string {
@@ -43,65 +43,70 @@ export function AccountL2ManagedSection({ parentId, enabled }: AccountL2ManagedS
 	/** null = chưa probe; true/false = đã biết có hay không User cấp 2 (không keyword, trang 0). */
 	const [hasAnyL2, setHasAnyL2] = React.useState<boolean | null>(null);
 
-	const loadData = React.useCallback(async () => {
-		if (!enabled || !parentId) {
-			return;
-		}
-		setLoading(true);
-		setError(null);
-		try {
-			const params = new URLSearchParams({
-				parentId,
-				page: String(page),
-				pageSize: String(rowsPerPage),
-			});
-			if (appliedKeyword) {
-				params.set("keyword", appliedKeyword);
+	const loadData = React.useCallback(
+		async (signal?: AbortSignal): Promise<void> => {
+			if (!enabled || !parentId) {
+				return;
 			}
-			const res = await fetch(`/api/accounts/under?${params.toString()}`, { cache: "no-store" });
-			const payload = (await res.json().catch(() => ({}))) as unknown;
+			setLoading(true);
+			setError(null);
+			try {
+				const params = new URLSearchParams({
+					parentId,
+					page: String(page),
+					pageSize: String(rowsPerPage),
+				});
+				if (appliedKeyword) {
+					params.set("keyword", appliedKeyword);
+				}
+				const res = await fetch(`/api/accounts/under?${params.toString()}`, {
+					cache: "no-store",
+					signal,
+				});
+				if (signal?.aborted) {
+					return;
+				}
+				const payload = (await res.json().catch(() => ({}))) as unknown;
+				if (signal?.aborted) {
+					return;
+				}
 
-			if (!res.ok) {
-				setError(extractErrorMessage(payload));
+				if (!res.ok) {
+					setError(extractErrorMessage(payload));
+					setRows([]);
+					setCount(0);
+					if (appliedKeyword === "" && page === 0) {
+						setHasAnyL2(false);
+					}
+					return;
+				}
+
+				const data = payload as { data?: AccountItem[]; count?: number };
+				const list = data.data ?? [];
+				const total = typeof data.count === "number" ? data.count : 0;
+
+				setRows(list);
+				setCount(total);
+
+				if (appliedKeyword === "" && page === 0) {
+					setHasAnyL2(total > 0);
+				}
+			} catch (e) {
+				if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) {
+					return;
+				}
+				setError("Không thể kết nối máy chủ");
 				setRows([]);
 				setCount(0);
 				if (appliedKeyword === "" && page === 0) {
 					setHasAnyL2(false);
 				}
-				return;
+			} finally {
+				setLoading(false);
 			}
-
-			const data = payload as { data?: AccountItem[]; count?: number };
-			const list = data.data ?? [];
-			const total = typeof data.count === "number" ? data.count : 0;
-
-			setRows(list);
-			setCount(total);
-
-			if (appliedKeyword === "" && page === 0) {
-				setHasAnyL2(total > 0);
-			}
-		} catch {
-			setError("Không thể kết nối máy chủ");
-			setRows([]);
-			setCount(0);
-			if (appliedKeyword === "" && page === 0) {
-				setHasAnyL2(false);
-			}
-		} finally {
-			setLoading(false);
-		}
-	}, [appliedKeyword, enabled, page, parentId, rowsPerPage]);
-
-	React.useEffect(() => {
-		setHasAnyL2(null);
-		setPage(0);
-		setSearchText("");
-		setAppliedKeyword("");
-		setRows([]);
-		setCount(0);
-		setError(null);
-	}, [parentId]);
+		},
+		[appliedKeyword, enabled, page, parentId, rowsPerPage]
+	);
 
 	React.useEffect(() => {
 		if (!enabled || !parentId) {
@@ -114,7 +119,13 @@ export function AccountL2ManagedSection({ parentId, enabled }: AccountL2ManagedS
 			setError(null);
 			return;
 		}
-		void loadData();
+
+		const ac = new AbortController();
+		void loadData(ac.signal);
+
+		return () => {
+			ac.abort();
+		};
 	}, [enabled, loadData, parentId]);
 
 	React.useEffect(() => {
@@ -199,7 +210,7 @@ export function AccountL2ManagedSection({ parentId, enabled }: AccountL2ManagedS
 					</Typography>
 				) : null}
 				<Divider />
-				<AccountsPagination
+				<ListPagination
 					compact
 					count={count}
 					onPageChange={(newPage) => {
@@ -210,6 +221,7 @@ export function AccountL2ManagedSection({ parentId, enabled }: AccountL2ManagedS
 						setPage(0);
 					}}
 					page={page}
+					recordLabelPlural="tài khoản"
 					rowsPerPage={rowsPerPage}
 				/>
 			</Stack>

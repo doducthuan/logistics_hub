@@ -28,6 +28,8 @@ def test_get_access_token(client: TestClient) -> None:
     assert r.status_code == 200
     assert "access_token" in tokens
     assert tokens["access_token"]
+    assert tokens.get("user") is not None
+    assert tokens["user"]["email"] == settings.FIRST_SUPERUSER
 
 
 def test_get_access_token_incorrect_password(client: TestClient) -> None:

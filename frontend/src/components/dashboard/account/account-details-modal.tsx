@@ -11,8 +11,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 import FormControl from "@mui/material/FormControl";
 import FormHelperText from "@mui/material/FormHelperText";
 import IconButton from "@mui/material/IconButton";
-import InputLabel from "@mui/material/InputLabel";
 import InputAdornment from "@mui/material/InputAdornment";
+import InputLabel from "@mui/material/InputLabel";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
@@ -21,14 +21,18 @@ import { EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
 import { EyeSlashIcon } from "@phosphor-icons/react/dist/ssr/EyeSlash";
 import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 
-import { dayjs } from "@/lib/dayjs";
 import { Option } from "@/components/core/option";
+import { dayjs } from "@/lib/dayjs";
 
 import { AccountL2ManagedSection } from "./account-l2-managed-section";
 import type { AccountItem } from "./types";
 
-/** Dấu * bắt buộc trên nhãn — luôn màu đỏ (error) */
+const boldInputLabelFormControlSx = {
+	"& .MuiInputLabel-root": { fontWeight: 600 },
+} as const;
+
 const requiredLabelFormControlSx = {
+	...boldInputLabelFormControlSx,
 	"& .MuiFormLabel-asterisk": { color: "error.main" },
 	"& .MuiInputLabel-asterisk": { color: "error.main" },
 } as const;
@@ -198,7 +202,7 @@ export function AccountDetailsModal({
 				component="div"
 				sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", pr: 1.5 }}
 			>
-				<Typography component="span" variant="h6">
+				<Typography component="span" sx={{ fontWeight: 600 }} variant="h6">
 					Chi tiết tài khoản
 				</Typography>
 				<IconButton onClick={onClose}>
@@ -232,34 +236,32 @@ export function AccountDetailsModal({
 								/>
 							</FormControl>
 						</Stack>
+						<FormControl fullWidth sx={boldInputLabelFormControlSx}>
+							<InputLabel>Mật khẩu mới</InputLabel>
+							<OutlinedInput
+								label="Mật khẩu mới"
+								onChange={(event) => {
+									setForm((prev) => (prev ? { ...prev, password: event.target.value } : prev));
+								}}
+								endAdornment={
+									<InputAdornment position="end">
+										<IconButton
+											edge="end"
+											onClick={() => {
+												setShowPassword((prev) => !prev);
+											}}
+										>
+											{showPassword ? <EyeSlashIcon /> : <EyeIcon />}
+										</IconButton>
+									</InputAdornment>
+								}
+								type={showPassword ? "text" : "password"}
+								value={form.password}
+							/>
+							<FormHelperText>Để trống nếu không đổi mật khẩu</FormHelperText>
+						</FormControl>
 						<Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-							<FormControl fullWidth>
-								<InputLabel>Mật khẩu mới</InputLabel>
-								<OutlinedInput
-									label="Mật khẩu mới"
-									onChange={(event) => {
-										setForm((prev) => (prev ? { ...prev, password: event.target.value } : prev));
-									}}
-									endAdornment={
-										<InputAdornment position="end">
-											<IconButton
-												edge="end"
-												onClick={() => {
-													setShowPassword((prev) => !prev);
-												}}
-											>
-												{showPassword ? <EyeSlashIcon /> : <EyeIcon />}
-											</IconButton>
-										</InputAdornment>
-									}
-									type={showPassword ? "text" : "password"}
-									value={form.password}
-								/>
-								<FormHelperText>Để trống nếu không đổi mật khẩu</FormHelperText>
-							</FormControl>
-						</Stack>
-						<Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-							<FormControl fullWidth>
+							<FormControl fullWidth sx={boldInputLabelFormControlSx}>
 								<InputLabel>Số điện thoại</InputLabel>
 								<OutlinedInput
 									label="Số điện thoại"
@@ -269,7 +271,7 @@ export function AccountDetailsModal({
 									value={form.phone}
 								/>
 							</FormControl>
-							<FormControl fullWidth>
+							<FormControl fullWidth sx={boldInputLabelFormControlSx}>
 								<InputLabel>Trạng thái</InputLabel>
 								<Select
 									label="Trạng thái"
@@ -285,7 +287,7 @@ export function AccountDetailsModal({
 								</Select>
 							</FormControl>
 						</Stack>
-						<FormControl fullWidth>
+						<FormControl fullWidth sx={boldInputLabelFormControlSx}>
 							<InputLabel>Mô tả</InputLabel>
 							<OutlinedInput
 								label="Mô tả"
@@ -314,10 +316,9 @@ export function AccountDetailsModal({
 				)}
 
 				<Stack spacing={2} sx={{ maxWidth: "100%", minWidth: 0 }}>
-					{/* <Typography variant="subtitle2">Thông tin hệ thống</Typography> */}
 					<Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-						<FormControl fullWidth>
-							<InputLabel shrink>Ngày tạo</InputLabel>
+								<FormControl fullWidth sx={boldInputLabelFormControlSx}>
+									<InputLabel shrink>Ngày tạo</InputLabel>
 							<OutlinedInput
 								inputProps={{ readOnly: true, tabIndex: -1 }}
 								label="Ngày tạo"
@@ -327,8 +328,8 @@ export function AccountDetailsModal({
 								value={account?.created_at ? dayjs(account.created_at).format("HH:mm DD/MM/YYYY") : ""}
 							/>
 						</FormControl>
-						<FormControl fullWidth>
-							<InputLabel shrink>Người tạo</InputLabel>
+								<FormControl fullWidth sx={boldInputLabelFormControlSx}>
+									<InputLabel shrink>Người tạo</InputLabel>
 							<OutlinedInput
 								inputProps={{ readOnly: true, tabIndex: -1 }}
 								label="Người tạo"
@@ -340,8 +341,8 @@ export function AccountDetailsModal({
 						</FormControl>
 					</Stack>
 					<Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-						<FormControl fullWidth>
-							<InputLabel shrink>Ngày cập nhật</InputLabel>
+								<FormControl fullWidth sx={boldInputLabelFormControlSx}>
+									<InputLabel shrink>Ngày cập nhật</InputLabel>
 							<OutlinedInput
 								inputProps={{ readOnly: true, tabIndex: -1 }}
 								label="Ngày cập nhật"
@@ -351,8 +352,8 @@ export function AccountDetailsModal({
 								value={account?.updated_at ? dayjs(account.updated_at).format("HH:mm DD/MM/YYYY") : ""}
 							/>
 						</FormControl>
-						<FormControl fullWidth>
-							<InputLabel shrink>Người cập nhật</InputLabel>
+								<FormControl fullWidth sx={boldInputLabelFormControlSx}>
+									<InputLabel shrink>Người cập nhật</InputLabel>
 							<OutlinedInput
 								inputProps={{ readOnly: true, tabIndex: -1 }}
 								label="Người cập nhật"
@@ -370,7 +371,7 @@ export function AccountDetailsModal({
 					Đóng
 				</Button>
 				<Button disabled={!account || !form || !isValid || loading} onClick={handleSave} variant="contained">
-					{loading ? "Đang lưu..." : "Lưu thay đổi"}
+					{loading ? "Đang lưu..." : "Cập nhật"}
 				</Button>
 			</DialogActions>
 		</Dialog>

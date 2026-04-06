@@ -4,21 +4,24 @@ import { redirect } from "next/navigation";
 
 import { AccountsView } from "@/components/dashboard/account/accounts-view";
 import { appConfig } from "@/config/app";
-import { getUser } from "@/lib/custom-auth/server";
+import { getAccountsPageForSessionCached } from "@/lib/accounts/fetch-accounts-server";
 import { paths } from "@/paths";
 
 export const metadata = { title: `Accounts | Dashboard | ${appConfig.name}` } satisfies Metadata;
 
 export default async function Page(): Promise<React.JSX.Element> {
-	const { data } = await getUser();
+	/* Một lần GET /me + list — không gọi thêm getUser() (trùng /me). */
+	const initial = await getAccountsPageForSessionCached({ page: 0, pageSize: 10, keyword: "" });
 
-	if (!data?.user) {
-		redirect(paths.login);
+	if (!initial.ok) {
+		if (initial.status === 401) {
+			redirect(paths.login);
+		}
+		if (initial.status === 403) {
+			redirect(paths.dashboard.overview);
+		}
+		return <AccountsView initialPayload={null} />;
 	}
 
-	if (data.user.role === "user_level_2") {
-		redirect(paths.dashboard.overview);
-	}
-
-	return <AccountsView />;
+	return <AccountsView initialPayload={initial.data} />;
 }

@@ -13,48 +13,57 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 
-import { AccountCreateModal } from "./account-create-modal";
-import { AccountDetailsModal } from "./account-details-modal";
+import { useAuth } from "@/components/auth/custom/auth-context";
+
+import { CategoriesTable } from "./categories-table";
+import { CategoryCreateModal } from "./category-create-modal";
+import { CategoryDetailsModal } from "./category-details-modal";
 import { ListPagination } from "@/components/core/list-pagination";
-import { AccountsTable } from "./accounts-table";
-import type { AccountItem, AccountsApiResponse } from "./types";
+import type { CategoriesApiResponse, CategoryItem } from "./types";
 
 const DEFAULT_SERVER_PAGE_SIZE = 10;
 
-export interface AccountsViewProps {
-	/** Dữ liệu trang đầu từ RSC — tránh gọi /api/accounts hai lần khi Strict Mode chạy effect hai lần. */
-	initialPayload?: AccountsApiResponse | null;
+export interface CategoriesViewProps {
+	initialPayload?: CategoriesApiResponse | null;
 }
 
 function extractErrorMessage(payload: unknown): string {
 	if (payload && typeof payload === "object" && "detail" in payload && typeof payload.detail === "string") {
 		return payload.detail;
 	}
-	return "Failed to load accounts";
+	return "Không tải được danh sách";
 }
 
-export function AccountsView({ initialPayload = null }: AccountsViewProps): React.JSX.Element {
+export function CategoriesView({ initialPayload = null }: CategoriesViewProps): React.JSX.Element {
+	const { user } = useAuth();
+	const isAdmin = user?.role === "admin";
+
 	const hasInitial = initialPayload != null;
 	const [loading, setLoading] = React.useState(!hasInitial);
 	const [error, setError] = React.useState<string | null>(null);
-	const [currentAccount, setCurrentAccount] = React.useState<AccountItem | null>(initialPayload?.current ?? null);
-	const [managedAccounts, setManagedAccounts] = React.useState<AccountItem[]>(initialPayload?.data ?? []);
-	const [allScopeAccounts, setAllScopeAccounts] = React.useState<AccountItem[]>(initialPayload?.data ?? []);
+	const [rows, setRows] = React.useState<CategoryItem[]>(initialPayload?.data ?? []);
 	const [count, setCount] = React.useState(initialPayload?.count ?? 0);
 	const [page, setPage] = React.useState(0);
 	const [rowsPerPage, setRowsPerPage] = React.useState(10);
 	const [searchText, setSearchText] = React.useState("");
-	/** Từ khóa đã gửi lên API — chỉ cập nhật khi nhấn Enter trong ô tìm kiếm */
 	const [appliedKeyword, setAppliedKeyword] = React.useState("");
 
 	const [createOpen, setCreateOpen] = React.useState(false);
 	const [detailsOpen, setDetailsOpen] = React.useState(false);
-	const [selectedAccount, setSelectedAccount] = React.useState<AccountItem | null>(null);
+	const [selected, setSelected] = React.useState<CategoryItem | null>(null);
 
-	/** Có payload từ RSC lúc mount — không refetch client khi vẫn đúng trang/filter khớp server. */
-	const hadInitialOnMountRef = React.useRef(hasInitial);
+	/**
+	 * true sau khi user rời khỏi view trùng dữ liệu bootstrap server (trang 1, size mặc định, không keyword).
+	 * Dùng cùng điều kiện skip fetch để React 18 Strict Mode (chạy effect 2 lần) không gọi API thừa.
+	 */
+	const everLeftBootstrapRef = React.useRef(false);
+	const alignedWithServerBootstrap =
+		page === 0 && rowsPerPage === DEFAULT_SERVER_PAGE_SIZE && appliedKeyword === "";
+	if (!alignedWithServerBootstrap) {
+		everLeftBootstrapRef.current = true;
+	}
 
-	const loadData = React.useCallback(async () => {
+	const loadData = React.useCallback(async (signal?: AbortSignal) => {
 		setLoading(true);
 		setError(null);
 		try {
@@ -65,39 +74,42 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 			if (appliedKeyword) {
 				params.set("keyword", appliedKeyword);
 			}
-			const res = await fetch(`/api/accounts?${params.toString()}`, { method: "GET", cache: "no-store" });
+			const res = await fetch(`/api/categories?${params.toString()}`, {
+				cache: "no-store",
+				signal,
+			});
 			const payload = (await res.json().catch(() => ({}))) as unknown;
-
 			if (!res.ok) {
 				setError(extractErrorMessage(payload));
 				return;
 			}
-
-			const data = payload as AccountsApiResponse;
-
-			setCurrentAccount(data.current);
-			setManagedAccounts(data.data);
-			setAllScopeAccounts(data.data);
+			const data = payload as CategoriesApiResponse;
+			setRows(data.data);
 			setCount(data.count);
-		} catch {
-			setError("Cannot reach server");
+		} catch (err) {
+			if (err instanceof DOMException && err.name === "AbortError") {
+				return;
+			}
+			setError("Không thể kết nối máy chủ");
 		} finally {
 			setLoading(false);
 		}
 	}, [appliedKeyword, page, rowsPerPage]);
 
 	React.useEffect(() => {
-		if (hadInitialOnMountRef.current) {
-			const alignedWithServerInitial =
-				page === 0 && rowsPerPage === DEFAULT_SERVER_PAGE_SIZE && appliedKeyword === "";
-			if (alignedWithServerInitial) {
-				return;
-			}
+		const skipBecauseServerHydrated =
+			initialPayload != null && alignedWithServerBootstrap && !everLeftBootstrapRef.current;
+		if (skipBecauseServerHydrated) {
+			return;
 		}
-		void loadData();
-	}, [loadData, page, rowsPerPage, appliedKeyword]);
 
-	/** Khi tổng số trang giảm (đổi page size / filter) hoặc hết dữ liệu, giữ page hợp lệ. */
+		const ac = new AbortController();
+		void loadData(ac.signal);
+		return () => {
+			ac.abort();
+		};
+	}, [alignedWithServerBootstrap, appliedKeyword, initialPayload, loadData, page, rowsPerPage]);
+
 	React.useEffect(() => {
 		if (count === 0) {
 			if (page !== 0) {
@@ -124,20 +136,24 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 				<Stack spacing={4}>
 					<Stack direction={{ xs: "column", sm: "row" }} spacing={3} sx={{ alignItems: "flex-start" }}>
 						<Box sx={{ flex: "1 1 auto" }}>
-							<Typography variant="h4">Tài khoản</Typography>
+							<Typography variant="h4">Loại mặt hàng</Typography>
+							{/* <Typography color="text.secondary" sx={{ mt: 0.5 }} variant="body2">
+								Danh sách loại gốc; loại con quản lý trong chi tiết hoặc khi tạo mới.
+							</Typography> */}
 						</Box>
-						<Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-							<Button
-								disabled={!currentAccount}
-								onClick={() => {
-									setCreateOpen(true);
-								}}
-								startIcon={<PlusIcon />}
-								variant="contained"
-							>
-								Thêm mới
-							</Button>
-						</Box>
+						{isAdmin ? (
+							<Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+								<Button
+									onClick={() => {
+										setCreateOpen(true);
+									}}
+									startIcon={<PlusIcon />}
+									variant="contained"
+								>
+									Thêm mới
+								</Button>
+							</Box>
+						) : null}
 					</Stack>
 
 					<Card>
@@ -157,19 +173,17 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 						<Box sx={{ p: 2, pb: 1 }}>
 							<FormControl fullWidth>
 								<OutlinedInput
-									label="Tìm kiếm theo tên, email, số điện thoại, mô tả"
 									onChange={(event) => {
 										setSearchText(event.target.value);
 									}}
 									onKeyDown={(event) => {
 										if (event.key === "Enter") {
 											event.preventDefault();
-											const value = event.currentTarget.value.trim();
 											setPage(0);
-											setAppliedKeyword(value);
+											setAppliedKeyword(event.currentTarget.value.trim());
 										}
 									}}
-									placeholder="Tìm kiếm"
+									placeholder="Tìm kiếm theo tên, mô tả"
 									value={searchText}
 								/>
 							</FormControl>
@@ -185,14 +199,14 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 									transition: "opacity 120ms ease",
 								}}
 							>
-								<AccountsTable
+								<CategoriesTable
 									loading={loading}
-									onView={(account) => {
-										setSelectedAccount(account);
+									onView={(row) => {
+										setSelected(row);
 										setDetailsOpen(true);
 									}}
 									page={page}
-									rows={managedAccounts}
+									rows={rows}
 									rowsPerPage={rowsPerPage}
 								/>
 							</Box>
@@ -208,16 +222,15 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 								setPage(0);
 							}}
 							page={page}
-							recordLabelPlural="tài khoản"
+							recordLabelPlural="loại mặt hàng"
 							rowsPerPage={rowsPerPage}
 						/>
 					</Card>
 				</Stack>
 			</Box>
 
-			{currentAccount ? (
-				<AccountCreateModal
-					currentAccount={currentAccount}
+			{isAdmin ? (
+				<CategoryCreateModal
 					onClose={() => {
 						setCreateOpen(false);
 					}}
@@ -228,16 +241,15 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 					open={createOpen}
 				/>
 			) : null}
-			<AccountDetailsModal
-				allScopeAccounts={allScopeAccounts}
-				account={selectedAccount}
+			<CategoryDetailsModal
+				category={selected}
+				isAdmin={isAdmin}
 				onClose={() => {
 					setDetailsOpen(false);
-					setSelectedAccount(null);
+					setSelected(null);
 				}}
 				onUpdated={loadData}
 				open={detailsOpen}
-				viewerAccount={currentAccount}
 			/>
 		</React.Fragment>
 	);

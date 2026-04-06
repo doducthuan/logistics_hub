@@ -71,8 +71,8 @@ export async function validateAccessToken(accessToken: string): Promise<boolean>
 }
 
 export async function fetchAccountByAccessToken(accessToken: string): Promise<AccountPublicResponse | null> {
-	const res = await fetch(`${getApiBaseUrl()}/api/v1/login/test-token`, {
-		method: "POST",
+	const res = await fetch(`${getApiBaseUrl()}/api/v1/accounts/me`, {
+		method: "GET",
 		headers: {
 			Authorization: `Bearer ${accessToken}`,
 			Accept: "application/json",
@@ -87,7 +87,10 @@ export async function fetchAccountByAccessToken(accessToken: string): Promise<Ac
 	return (await res.json()) as AccountPublicResponse;
 }
 
-export async function loginAccessToken(email: string, password: string): Promise<{ access_token: string } | { detail: string }> {
+export async function loginAccessToken(
+	email: string,
+	password: string
+): Promise<{ access_token: string; user: AccountPublicResponse } | { detail: string }> {
 	const body = new URLSearchParams();
 	body.set("username", email);
 	body.set("password", password);
@@ -102,7 +105,11 @@ export async function loginAccessToken(email: string, password: string): Promise
 		cache: "no-store",
 	});
 
-	const data = (await res.json()) as { access_token?: string; detail?: unknown };
+	const data = (await res.json()) as {
+		access_token?: string;
+		user?: AccountPublicResponse;
+		detail?: unknown;
+	};
 
 	if (!res.ok) {
 		const detail = formatErrorDetail(data.detail);
@@ -113,7 +120,16 @@ export async function loginAccessToken(email: string, password: string): Promise
 		return { detail: "Invalid response from server" };
 	}
 
-	return { access_token: data.access_token };
+	if (data.user) {
+		return { access_token: data.access_token, user: data.user };
+	}
+
+	/* Backend cũ không trả user — fallback một lần GET /me */
+	const account = await fetchAccountByAccessToken(data.access_token);
+	if (!account) {
+		return { detail: "Invalid response from server" };
+	}
+	return { access_token: data.access_token, user: account };
 }
 
 export async function requestPasswordRecoveryEmail(email: string): Promise<{ ok: true } | { error: string }> {
