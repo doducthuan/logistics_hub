@@ -351,8 +351,7 @@ export function CategoryDetailsModal({
 								<>
 									{isAdmin ? (
 										<Typography color="text.secondary" variant="caption">
-											Tab / Enter ở ô cuối thêm dòng; dòng mới không tên sẽ bỏ qua khi lưu. Xóa dòng có
-											sẵn sẽ xóa trên máy chủ khi lưu.
+											Tab để chuyển sang ô tiếp theo. Khi ở ô cuối Tab / Enter sẽ thêm dòng mới.
 										</Typography>
 									) : null}
 									<TableContainer sx={{ maxWidth: "100%", overflowX: "auto" }}>
