@@ -40,6 +40,52 @@ const requiredLabelFormControlSx = {
 	"& .MuiInputLabel-asterisk": { color: "error.main" },
 } as const;
 
+function rowMatchesChildKeyword(row: InlineEditableGridRow, keywordRaw: string): boolean {
+	const kw = keywordRaw.trim();
+	if (!kw) {
+		return true;
+	}
+	const q = kw.toLowerCase();
+	const name = (row.name ?? "").toLowerCase();
+	const desc = (row.description ?? "").toLowerCase();
+	if (!row._serverId && !name.trim() && !desc.trim()) {
+		return true;
+	}
+	return name.includes(q) || desc.includes(q);
+}
+
+/** Gộp thay đổi từ lưới đang lọc vào toàn bộ `childRows` (phục vụ lưu / xóa đúng). */
+function mergeChildGridAfterFilter(
+	prevAll: InlineEditableGridRow[],
+	nextVisible: InlineEditableGridRow[],
+	keyword: string
+): InlineEditableGridRow[] {
+	const matches = (r: InlineEditableGridRow) => rowMatchesChildKeyword(r, keyword);
+	const prevVisibleKeys = prevAll.filter(matches).map((r) => r._rowKey);
+	const nextByKey = new Map(nextVisible.map((r) => [r._rowKey, r]));
+	const deletedKeys = new Set(prevVisibleKeys.filter((k) => !nextByKey.has(k)));
+	const brandNew = nextVisible.filter((r) => !prevAll.some((p) => p._rowKey === r._rowKey));
+
+	const result: InlineEditableGridRow[] = [];
+	for (const r of prevAll) {
+		if (deletedKeys.has(r._rowKey)) {
+			continue;
+		}
+		if (matches(r)) {
+			const u = nextByKey.get(r._rowKey);
+			if (u) {
+				result.push(u);
+			}
+		} else {
+			result.push(r);
+		}
+	}
+	for (const r of brandNew) {
+		result.push(r);
+	}
+	return result;
+}
+
 export interface CategoryDetailsModalProps {
 	open: boolean;
 	category: CategoryItem | null;
@@ -76,6 +122,8 @@ export function CategoryDetailsModal({
 	const [error, setError] = React.useState<string | null>(null);
 	const [creatorName, setCreatorName] = React.useState("");
 	const [updaterName, setUpdaterName] = React.useState("");
+	const [childSearchText, setChildSearchText] = React.useState("");
+	const [appliedChildKeyword, setAppliedChildKeyword] = React.useState("");
 
 	const initialChildIdsRef = React.useRef<Set<string>>(new Set());
 
@@ -91,6 +139,8 @@ export function CategoryDetailsModal({
 		if (!open || !category) {
 			return;
 		}
+		setChildSearchText("");
+		setAppliedChildKeyword("");
 		let cancelled = false;
 		(async () => {
 			setChildrenLoading(true);
@@ -264,7 +314,21 @@ export function CategoryDetailsModal({
 		}
 	}, [category, childRows, form, isAdmin, loading, onClose, onUpdated]);
 
-	const childGridMinRows = isAdmin ? 1 : Math.max(childRows.length, 0);
+	const displayedChildRows = React.useMemo(
+		() => childRows.filter((r) => rowMatchesChildKeyword(r, appliedChildKeyword)),
+		[appliedChildKeyword, childRows]
+	);
+
+	const onFilteredChildRowsChange = React.useCallback(
+		(nextVisible: InlineEditableGridRow[]) => {
+			setChildRows((prev) => mergeChildGridAfterFilter(prev, nextVisible, appliedChildKeyword));
+		},
+		[appliedChildKeyword]
+	);
+
+	const childGridMinRows = isAdmin ? 1 : Math.max(displayedChildRows.length, 0);
+	const childListFilterNoMatch =
+		appliedChildKeyword.trim().length > 0 && displayedChildRows.length === 0;
 
 	return (
 		<Dialog fullWidth maxWidth="md" onClose={onClose} open={open}>
@@ -348,24 +412,55 @@ export function CategoryDetailsModal({
 									Không có loại con.
 								</Typography>
 							) : (
-								<>
+								<Stack spacing={1.5} sx={{ maxWidth: "100%", minWidth: 0 }}>
 									{isAdmin ? (
 										<Typography color="text.secondary" variant="caption">
-											Tab để chuyển sang ô tiếp theo. Khi ở ô cuối Tab / Enter sẽ thêm dòng mới.
+											Tab để chuyển ô; Tab / Enter ở ô cuối thêm dòng.
 										</Typography>
 									) : null}
-									<TableContainer sx={{ maxWidth: "100%", overflowX: "auto" }}>
-										<InlineEditableGrid
-											addRowOnLastCellAdvance={isAdmin}
-											columns={CATEGORY_CHILD_COLUMNS}
-											createEmptyRow={createEmptyCategoryChildRow}
-											disabled={!isAdmin}
-											minRows={childGridMinRows}
-											onRowsChange={setChildRows}
-											rows={childRows}
+									<FormControl fullWidth size="small">
+										<OutlinedInput
+											placeholder="Tìm kiếm"
+											size="small"
+											onChange={(e) => {
+												setChildSearchText(e.target.value);
+											}}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													e.preventDefault();
+													const raw = (e.currentTarget as HTMLInputElement).value;
+													setAppliedChildKeyword(raw.trim());
+												}
+											}}
+											value={childSearchText}
 										/>
-									</TableContainer>
-								</>
+									</FormControl>
+									
+									{childListFilterNoMatch ? (
+										<Stack spacing={0.5} sx={{ py: 1 }}>
+											<Typography color="text.secondary" sx={{ textAlign: "center" }} variant="caption">
+												Không có bản ghi phù hợp.
+											</Typography>
+											{isAdmin ? (
+												<Typography color="text.secondary" sx={{ textAlign: "center" }} variant="caption">
+													Xóa từ khóa và nhấn Enter để hiện lại toàn bộ danh sách.
+												</Typography>
+											) : null}
+										</Stack>
+									) : (
+										<TableContainer sx={{ maxWidth: "100%", overflowX: "auto" }}>
+											<InlineEditableGrid
+												addRowOnLastCellAdvance={isAdmin}
+												columns={CATEGORY_CHILD_COLUMNS}
+												createEmptyRow={createEmptyCategoryChildRow}
+												disabled={!isAdmin}
+												minRows={childGridMinRows}
+												onRowsChange={onFilteredChildRowsChange}
+												rows={displayedChildRows}
+											/>
+										</TableContainer>
+									)}
+								</Stack>
 							)}
 						</Stack>
 
