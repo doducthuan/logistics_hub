@@ -1,12 +1,21 @@
 from fastapi import APIRouter
 
-from app.api.routes import accounts, categories, items, login, private, utils
+from app.api.routes import (
+    account_rate_cards,
+    accounts,
+    categories,
+    items,
+    login,
+    private,
+    utils,
+)
 from app.core.config import settings
 
 api_router = APIRouter()
 api_router.include_router(login.router)
 api_router.include_router(accounts.router)
 api_router.include_router(categories.router)
+api_router.include_router(account_rate_cards.router)
 api_router.include_router(utils.router)
 api_router.include_router(items.router)
 

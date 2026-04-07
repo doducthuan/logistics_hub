@@ -56,6 +56,14 @@ export const dashboardConfig = {
 					prefetch: false,
 				},
 				{
+					key: "rate-cards",
+					title: "Bảng giá cước",
+					href: paths.dashboard.rateCards.list,
+					icon: "receipt",
+					matcher: { type: "startsWith", href: "/dashboard/rate-cards" },
+					prefetch: false,
+				},
+				{
 					key: "customers",
 					title: "Customers",
 					icon: "users",

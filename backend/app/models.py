@@ -1,6 +1,7 @@
 import enum
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import EmailStr, field_validator
@@ -201,6 +202,71 @@ class CategoryPublic(CategoryCore):
 
 class CategoriesPublic(SQLModel):
     data: list[CategoryPublic]
+    count: int
+
+
+# --- Account Rate Card (bảng giá theo account + category, version theo effective_date) ---
+
+
+class AccountRateCardCore(SQLModel):
+    account_id: uuid.UUID = Field(foreign_key="account.id")
+    category_id: uuid.UUID = Field(foreign_key="category.id")
+    unit_rate: Decimal = Field(
+        default=Decimal("0"),
+        max_digits=15,
+        decimal_places=2,
+    )
+    surcharge: Decimal = Field(
+        default=Decimal("0"),
+        max_digits=15,
+        decimal_places=2,
+    )
+    effective_date: datetime = Field(
+        sa_type=DateTime(timezone=True),  # type: ignore[call-overload]
+    )
+
+    @field_validator("effective_date")
+    @classmethod
+    def ensure_effective_date_is_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            raise ValueError("effective_date must include timezone (UTC)")
+        return value.astimezone(timezone.utc)
+
+
+class AccountRateCardCreate(AccountRateCardCore):
+    pass
+
+
+class AccountRateCard(AccountRateCardCore, EntityBase, table=True):
+    pass
+
+
+class AccountRateCardPublic(AccountRateCardCore):
+    id: uuid.UUID
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    created_by_id: uuid.UUID | None = None
+    updated_by_id: uuid.UUID | None = None
+    is_active: bool = True
+
+
+class AccountRateCardsPublic(SQLModel):
+    data: list[AccountRateCardPublic]
+    count: int
+
+
+class AccountRateCardResolvedPublic(SQLModel):
+    category_id: uuid.UUID
+    category_name: str
+    unit_rate: Decimal = Field(default=Decimal("0"), max_digits=15, decimal_places=2)
+    surcharge: Decimal = Field(default=Decimal("0"), max_digits=15, decimal_places=2)
+    effective_date: datetime | None = None
+
+
+class AccountRateCardResolvedListPublic(SQLModel):
+    account_id: uuid.UUID
+    effective_on: date
+    data: list[AccountRateCardResolvedPublic]
     count: int
 
 

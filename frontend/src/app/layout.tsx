@@ -78,7 +78,7 @@ export default async function Layout({ children }: LayoutProps): Promise<React.J
 											<ThemeProvider>
 												{children}
 												<SettingsButton />
-												<Toaster position="bottom-right" />
+												<Toaster position="bottom-right" richColors />
 											</ThemeProvider>
 										</Rtl>
 									</EmotionCacheProvider>

@@ -82,6 +82,9 @@ export const paths = {
 		categories: {
 			list: "/dashboard/categories",
 		},
+		rateCards: {
+			list: "/dashboard/rate-cards",
+		},
 		customers: {
 			list: "/dashboard/customers",
 			create: "/dashboard/customers/create",
