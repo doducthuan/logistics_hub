@@ -46,12 +46,12 @@ export function AccountsTable({
 			{
 				name: "STT",
 				align: "center",
-				width: "72px",
+				width: "64px",
 				formatter: (_row, index) => page * rowsPerPage + index + 1,
 			},
 			{
 				name: "Tài khoản",
-				width: "260px",
+				width: "240px",
 				formatter: (row) => (
 					<div>
 						<Typography sx={{ whiteSpace: "nowrap" }} variant="subtitle2">
@@ -83,16 +83,16 @@ export function AccountsTable({
 					</div>
 				),
 			},
-			{ name: "Email", width: "220px", formatter: (row) => row.email },
+			{ name: "Email", width: "240px", formatter: (row) => row.email },
 			{
 				name: "Mô tả",
-				width: "260px",
+				width: "280px",
 				formatter: (row) => row.description || "—",
 			},
 			{
 				name: "Trạng thái",
 				align: "center",
-				width: "120px",
+				width: "140px",
 				formatter: (row) =>
 					row.is_active ? (
 						<Chip color="success" label="Đang hoạt động" size="small" variant="outlined" />
@@ -103,26 +103,20 @@ export function AccountsTable({
 			{
 				name: "Ngày tạo",
 				align: "center",
-				width: "180px",
+				width: "128px",
 				formatter: (row) =>
 					row.created_at ? dayjs(row.created_at).format("DD/MM/YYYY") : "—",
 			},
 			{
 				name: "Thao tác",
 				hideName: true,
-				align: "right",
-				width: "80px",
+				align: "center",
+				width: "92px",
 				formatter: (row) => (
-					<Stack direction="row" justifyContent="flex-end">
-						<IconButton
-							onClick={() => {
-								onView(row);
-							}}
-						>
-							<EyeIcon />
-						</IconButton>
-					</Stack>
-				),
+					<IconButton color="primary" onClick={() => { onView(row); }}>
+						<EyeIcon />
+					</IconButton>
+				)
 			},
 		],
 		[handleCopyPhone, onView, page, rowsPerPage]

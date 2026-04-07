@@ -270,6 +270,23 @@ class AccountRateCardResolvedListPublic(SQLModel):
     count: int
 
 
+class AccountRateCardHistoryEntryPublic(SQLModel):
+    """Một phiên bản giá theo ngày áp dụng (lịch sử theo category)."""
+
+    effective_date: datetime
+    unit_rate: Decimal = Field(default=Decimal("0"), max_digits=15, decimal_places=2)
+    surcharge: Decimal = Field(default=Decimal("0"), max_digits=15, decimal_places=2)
+    is_currently_effective: bool = False
+
+
+class AccountRateCardHistoryPublic(SQLModel):
+    account_id: uuid.UUID
+    category_id: uuid.UUID
+    category_name: str
+    data: list[AccountRateCardHistoryEntryPublic]
+    count: int
+
+
 # --- Item (giữ template; owner trỏ tới account) ---
 
 

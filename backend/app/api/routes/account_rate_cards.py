@@ -12,6 +12,8 @@ from app.models import (
     Account,
     AccountRateCard,
     AccountRateCardCreate,
+    AccountRateCardHistoryEntryPublic,
+    AccountRateCardHistoryPublic,
     AccountRateCardPublic,
     AccountRateCardResolvedListPublic,
     AccountRateCardResolvedPublic,
@@ -109,6 +111,65 @@ def read_effective_rate_cards_by_account(
     )
 
 
+@router.get(
+    "/by-account/{account_id}/category/{category_id}/history",
+    response_model=AccountRateCardHistoryPublic,
+)
+def read_rate_card_history_for_category(
+    account_id: uuid.UUID,
+    category_id: uuid.UUID,
+    session: SessionDep,
+    current_account: CurrentAccount,
+) -> Any:
+    if not _account_in_scope(session, current_account, account_id):
+        raise HTTPException(
+            status_code=403,
+            detail="The account doesn't have enough privileges",
+        )
+
+    category = session.get(Category, category_id)
+    if category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    rows = session.exec(
+        select(AccountRateCard)
+        .where(
+            AccountRateCard.account_id == account_id,
+            AccountRateCard.category_id == category_id,
+        )
+        .order_by(
+            col(AccountRateCard.effective_date).desc(),
+            col(AccountRateCard.created_at).desc(),
+        )
+    ).all()
+
+    utc_now = datetime.now(timezone.utc)
+    past_or_now = [r for r in rows if r.effective_date <= utc_now]
+    active: AccountRateCard | None = None
+    if past_or_now:
+        active = max(past_or_now, key=lambda r: (r.effective_date, r.created_at or datetime.min.replace(tzinfo=timezone.utc)))
+
+    history: list[AccountRateCardHistoryEntryPublic] = []
+    for row in rows:
+        is_current = active is not None and row.id == active.id
+        history.append(
+            AccountRateCardHistoryEntryPublic(
+                effective_date=row.effective_date,
+                unit_rate=row.unit_rate,
+                surcharge=row.surcharge,
+                is_currently_effective=is_current,
+            )
+        )
+
+    return AccountRateCardHistoryPublic(
+        account_id=account_id,
+        category_id=category_id,
+        category_name=category.name,
+        data=history,
+        count=len(history),
+    )
+
+
 @router.post("/", response_model=AccountRateCardPublic)
 def create_account_rate_card(
     *,
@@ -120,6 +181,12 @@ def create_account_rate_card(
         raise HTTPException(
             status_code=403,
             detail="The account doesn't have enough privileges",
+        )
+
+    if body.account_id == current_account.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot create rate card versions for your own account; view only.",
         )
 
     category = session.get(Category, body.category_id)

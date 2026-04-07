@@ -119,7 +119,7 @@ export function AccountCreateModal({
 			const data = (await res.json().catch(() => ({}))) as { detail?: string };
 
 			if (!res.ok) {
-				setError(data.detail ?? "Tạo tài khoản thất bại");
+				setError(data.detail ?? "Thêm mới tài khoản thất bại");
 				return;
 			}
 
@@ -145,7 +145,7 @@ export function AccountCreateModal({
 				sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", pr: 1.5 }}
 			>
 				<Typography component="span" sx={{ fontWeight: 600 }} variant="h6">
-					Tạo tài khoản
+					Thêm mới tài khoản
 				</Typography>
 				<IconButton onClick={onClose}>
 					<XIcon />
@@ -231,7 +231,7 @@ export function AccountCreateModal({
 					Hủy
 				</Button>
 				<Button disabled={!isValid || loading} onClick={handleSubmit} variant="contained">
-					{loading ? "Đang tạo..." : "Tạo mới"}
+					{loading ? "Đang tạo..." : "Thêm mới"}
 				</Button>
 			</DialogActions>
 		</Dialog>

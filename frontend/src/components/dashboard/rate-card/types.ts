@@ -12,3 +12,18 @@ export interface RateCardsByAccountResponse {
 	data: RateCardRow[];
 	count: number;
 }
+
+export interface RateCardHistoryEntry {
+	effective_date: string;
+	unit_rate: string;
+	surcharge: string;
+	is_currently_effective: boolean;
+}
+
+export interface RateCardCategoryHistoryResponse {
+	account_id: string;
+	category_id: string;
+	category_name: string;
+	data: RateCardHistoryEntry[];
+	count: number;
+}

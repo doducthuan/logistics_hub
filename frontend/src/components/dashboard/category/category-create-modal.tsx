@@ -87,7 +87,7 @@ export function CategoryCreateModal({ open, onClose, onCreated }: CategoryCreate
 			});
 			const data = (await res.json().catch(() => ({}))) as { detail?: string; id?: string };
 			if (!res.ok) {
-				setError(typeof data.detail === "string" ? data.detail : "Tạo loại thất bại");
+				setError(typeof data.detail === "string" ? data.detail : "Thêm mới thất bại");
 				return;
 			}
 			const parentId = data.id;
@@ -199,7 +199,7 @@ export function CategoryCreateModal({ open, onClose, onCreated }: CategoryCreate
 					Hủy
 				</Button>
 				<Button disabled={!isValid || loading} onClick={() => void handleSubmit()} variant="contained">
-					{loading ? "Đang lưu..." : "Tạo"}
+					{loading ? "Đang lưu..." : "Thêm mới"}
 				</Button>
 			</DialogActions>
 		</Dialog>

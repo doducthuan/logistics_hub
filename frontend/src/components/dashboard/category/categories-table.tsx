@@ -65,28 +65,24 @@ export function CategoriesTable({
 			{
 				name: "Ngày tạo",
 				align: "center",
-				width: "180px",
+				width: "170px",
 				formatter: (row) =>
 					row.created_at ? dayjs(row.created_at).format("DD/MM/YYYY") : "—",
 			},
 			{
 				name: "Thao tác",
 				hideName: true,
-				align: "right",
-				width: "72px",
+				align: "center",
+				width: "90px",
 				formatter: (row) => (
-					<Stack direction="row" justifyContent="flex-end" spacing={0.5}>
-						<Tooltip title="Xem chi tiết">
-							<IconButton
-								aria-label="Xem chi tiết"
-								onClick={() => {
-									onView(row);
-								}}
-							>
-								<EyeIcon />
-							</IconButton>
-						</Tooltip>
-					</Stack>
+					<IconButton
+						color="primary"
+						onClick={() => {
+							onView(row);
+						}}
+					>
+						<EyeIcon />
+					</IconButton>
 				),
 			},
 		],
