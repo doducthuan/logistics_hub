@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { fetchAccountsPageForCurrentSession } from "@/lib/accounts/fetch-accounts-server";
+import { clearAccessTokenOnNextResponse } from "@/lib/custom-auth/access-token-cookie";
 import { getApiBaseUrl } from "@/lib/custom-auth/api";
 
 async function getAccessToken(): Promise<string | null> {
@@ -22,6 +23,10 @@ export async function GET(request: Request): Promise<NextResponse> {
 	const result = await fetchAccountsPageForCurrentSession({ page, pageSize, keyword });
 
 	if (!result.ok) {
+		if (result.status === 404 || result.status === 401) {
+			const res = NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+			return clearAccessTokenOnNextResponse(res);
+		}
 		return NextResponse.json({ detail: result.detail }, { status: result.status });
 	}
 
@@ -45,6 +50,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 		cache: "no-store",
 	});
 	if (!currentRes.ok) {
+		if (currentRes.status === 404 || currentRes.status === 401) {
+			const res = NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+			return clearAccessTokenOnNextResponse(res);
+		}
 		const detail = await currentRes.text();
 		return NextResponse.json({ detail: detail || "Unable to fetch current account" }, { status: currentRes.status });
 	}

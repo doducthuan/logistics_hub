@@ -14,8 +14,8 @@ export default async function Page(): Promise<React.JSX.Element> {
 	const initial = await getAccountsPageForSessionCached({ page: 0, pageSize: 10, keyword: "" });
 
 	if (!initial.ok) {
-		if (initial.status === 401) {
-			redirect(paths.login);
+		if (initial.status === 401 || initial.status === 404) {
+			redirect(paths.auth.custom.signOut);
 		}
 		if (initial.status === 403) {
 			redirect(paths.dashboard.overview);
