@@ -33,11 +33,4 @@ export async function getUser(): Promise<{ data?: { user: User | null }; error?:
 	return inflightProfileRequest;
 }
 
-/** BFF đã xóa cookie khi /me 404/401 — đưa user về login thay vì để UI kẹt. */
-export function redirectToLoginIfUnauthorized(res: Response): boolean {
-	if (res.status === 401) {
-		globalThis.location.assign(paths.login);
-		return true;
-	}
-	return false;
-}
+export { redirectToLoginIfUnauthorized } from "./redirect-if-unauthorized";

@@ -28,7 +28,7 @@ import { EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
 import { Option } from "@/components/core/option";
 import { toast } from "@/components/core/toaster";
 import type { AccountItem, AccountsApiResponse } from "@/components/dashboard/account/types";
-import { redirectToLoginIfUnauthorized } from "@/lib/custom-auth/browser";
+import { redirectToLoginIfUnauthorized } from "@/lib/custom-auth/redirect-if-unauthorized";
 import { dayjs } from "@/lib/dayjs";
 import { dashboardTableHeadCellSx } from "@/components/dashboard/dashboard-table-presets";
 
