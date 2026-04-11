@@ -139,11 +139,19 @@ export function RateCardsView(): React.JSX.Element {
 		if (!viewerAccount) {
 			return accounts;
 		}
+		// Admin: chỉ chọn trong các tài khoản con (API đã lọc parent_id); không thêm chính admin — không có bảng giá cho admin.
+		if (viewerAccount.role === "admin") {
+			return accounts;
+		}
 		const rest = accounts.filter((a) => a.id !== viewerAccount.id);
 		return [viewerAccount, ...rest];
 	}, [viewerAccount, accounts]);
 
-	const isViewingSelf = Boolean(viewerAccount && selectedAccountId === viewerAccount.id);
+	const isViewingSelf = Boolean(
+		viewerAccount &&
+			viewerAccount.role !== "admin" &&
+			selectedAccountId === viewerAccount.id
+	);
 
 	const loadAccounts = React.useCallback(async () => {
 		setAccountsLoading(true);
