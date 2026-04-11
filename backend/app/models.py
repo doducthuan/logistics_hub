@@ -39,11 +39,11 @@ class EntityBase(SQLModel, table=False):
     )
     created_by_id: uuid.UUID | None = Field(
         default=None,
-        foreign_key="account.id",
+        foreign_key="accounts.id",
     )
     updated_by_id: uuid.UUID | None = Field(
         default=None,
-        foreign_key="account.id",
+        foreign_key="accounts.id",
     )
     is_active: bool = Field(default=True)
 
@@ -56,7 +56,7 @@ class AccountCore(SQLModel):
     phone: str | None = Field(default=None, unique=True, index=True, max_length=32)
     full_name: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
-    parent_id: uuid.UUID | None = Field(default=None, foreign_key="account.id")
+    parent_id: uuid.UUID | None = Field(default=None, foreign_key="accounts.id")
 
 
 class AccountBase(AccountCore):
@@ -109,6 +109,7 @@ class UpdatePassword(SQLModel):
 
 
 class Account(AccountCore, EntityBase, table=True):
+    __tablename__ = "accounts"
     hashed_password: str
     last_login_at: datetime | None = Field(
         default=None,
@@ -157,7 +158,7 @@ class AccountsPublic(SQLModel):
 class CategoryCore(SQLModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
-    parent_id: uuid.UUID | None = Field(default=None, foreign_key="category.id")
+    parent_id: uuid.UUID | None = Field(default=None, foreign_key="categories.id")
 
 
 class CategoryCreate(CategoryCore):
@@ -171,6 +172,7 @@ class CategoryUpdate(SQLModel):
 
 
 class Category(CategoryCore, EntityBase, table=True):
+    __tablename__ = "categories"
     __table_args__ = (UniqueConstraint("parent_id", "name", name="uq_category_parent_name"),)
 
     parent: Optional["Category"] = Relationship(
@@ -208,9 +210,9 @@ class CategoriesPublic(SQLModel):
 # --- Account Rate Card (bảng giá theo account + category, version theo effective_date) ---
 
 
-class AccountRateCardCore(SQLModel):
-    account_id: uuid.UUID = Field(foreign_key="account.id")
-    category_id: uuid.UUID = Field(foreign_key="category.id")
+class RateCardCore(SQLModel):
+    account_id: uuid.UUID = Field(foreign_key="accounts.id")
+    category_id: uuid.UUID = Field(foreign_key="categories.id")
     unit_rate: Decimal = Field(
         default=Decimal("0"),
         max_digits=15,
@@ -233,15 +235,16 @@ class AccountRateCardCore(SQLModel):
         return value.astimezone(timezone.utc)
 
 
-class AccountRateCardCreate(AccountRateCardCore):
+class RateCardCreate(RateCardCore):
     pass
 
 
-class AccountRateCard(AccountRateCardCore, EntityBase, table=True):
+class RateCard(RateCardCore, EntityBase, table=True):
+    __tablename__ = "rate_cards"
     pass
 
 
-class AccountRateCardPublic(AccountRateCardCore):
+class RateCardPublic(RateCardCore):
     id: uuid.UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -250,12 +253,12 @@ class AccountRateCardPublic(AccountRateCardCore):
     is_active: bool = True
 
 
-class AccountRateCardsPublic(SQLModel):
-    data: list[AccountRateCardPublic]
+class RateCardsPublic(SQLModel):
+    data: list[RateCardPublic]
     count: int
 
 
-class AccountRateCardResolvedPublic(SQLModel):
+class RateCardResolvedPublic(SQLModel):
     category_id: uuid.UUID
     category_name: str
     unit_rate: Decimal = Field(default=Decimal("0"), max_digits=15, decimal_places=2)
@@ -263,14 +266,14 @@ class AccountRateCardResolvedPublic(SQLModel):
     effective_date: datetime | None = None
 
 
-class AccountRateCardResolvedListPublic(SQLModel):
+class RateCardResolvedListPublic(SQLModel):
     account_id: uuid.UUID
     effective_on: date
-    data: list[AccountRateCardResolvedPublic]
+    data: list[RateCardResolvedPublic]
     count: int
 
 
-class AccountRateCardHistoryEntryPublic(SQLModel):
+class RateCardHistoryEntryPublic(SQLModel):
     """Một phiên bản giá theo ngày áp dụng (lịch sử theo category)."""
 
     effective_date: datetime
@@ -279,11 +282,11 @@ class AccountRateCardHistoryEntryPublic(SQLModel):
     is_currently_effective: bool = False
 
 
-class AccountRateCardHistoryPublic(SQLModel):
+class RateCardHistoryPublic(SQLModel):
     account_id: uuid.UUID
     category_id: uuid.UUID
     category_name: str
-    data: list[AccountRateCardHistoryEntryPublic]
+    data: list[RateCardHistoryEntryPublic]
     count: int
 
 
@@ -304,13 +307,14 @@ class ItemUpdate(ItemBase):
 
 
 class Item(ItemBase, table=True):
+    __tablename__ = "items"
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
     )
     owner_id: uuid.UUID = Field(
-        foreign_key="account.id", nullable=False, ondelete="CASCADE"
+        foreign_key="accounts.id", nullable=False, ondelete="CASCADE"
     )
     owner: Optional["Account"] = Relationship()
 

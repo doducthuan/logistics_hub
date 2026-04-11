@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { paths } from "@/paths";
-import { validateAccessToken } from "@/lib/custom-auth/api";
+import { clearAccessTokenOnNextResponse } from "@/lib/custom-auth/access-token-cookie";
+import { fetchAccountMe, validateAccessToken } from "@/lib/custom-auth/api";
 import { hasJwtSecretConfigured, isJwtAccessTokenValid } from "@/lib/custom-auth/jwt-verify";
 
 function normalizePath(pathname: string): string {
@@ -43,19 +44,25 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 		return redirectToLogin(req);
 	}
 
-	const valid = hasJwtSecretConfigured()
-		? await isJwtAccessTokenValid(token)
-		: await validateAccessToken(token);
+	if (hasJwtSecretConfigured()) {
+		const jwtOk = await isJwtAccessTokenValid(token);
+		if (!jwtOk) {
+			return redirectToLogin(req);
+		}
+		/* JWT còn hạn nhưng tài khoản có thể đã xóa — GET /me 404/401 phải hủy phiên. */
+		const me = await fetchAccountMe(token);
+		if (!me.ok) {
+			if (me.status === 404 || me.status === 401) {
+				return redirectToLogin(req);
+			}
+			return NextResponse.next({ request: req });
+		}
+		return NextResponse.next({ request: req });
+	}
+
+	const valid = await validateAccessToken(token);
 	if (!valid) {
-		const res = redirectToLogin(req);
-		res.cookies.set("access_token", "", {
-			httpOnly: true,
-			path: "/",
-			maxAge: 0,
-			sameSite: "lax",
-			secure: process.env.NODE_ENV === "production",
-		});
-		return res;
+		return redirectToLogin(req);
 	}
 
 	return NextResponse.next({ request: req });
@@ -67,5 +74,6 @@ function redirectToLogin(req: NextRequest): NextResponse {
 	if (returnTo !== paths.login && returnTo !== paths.home) {
 		loginUrl.searchParams.set("callbackUrl", returnTo);
 	}
-	return NextResponse.redirect(loginUrl);
+	const res = NextResponse.redirect(loginUrl);
+	return clearAccessTokenOnNextResponse(res);
 }

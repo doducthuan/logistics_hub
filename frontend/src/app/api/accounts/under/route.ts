@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { clearAccessTokenOnNextResponse } from "@/lib/custom-auth/access-token-cookie";
 import { getApiBaseUrl } from "@/lib/custom-auth/api";
 
 async function getAccessToken(): Promise<string | null> {
@@ -31,6 +32,10 @@ export async function GET(request: Request): Promise<NextResponse> {
 	});
 
 	if (!meRes.ok) {
+		if (meRes.status === 404 || meRes.status === 401) {
+			const res = NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+			return clearAccessTokenOnNextResponse(res);
+		}
 		const detail = await meRes.text();
 		return NextResponse.json({ detail: detail || "Unable to fetch current account" }, { status: meRes.status });
 	}

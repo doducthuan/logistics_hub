@@ -8,7 +8,6 @@ import Card from "@mui/material/Card";
 import CircularProgress from "@mui/material/CircularProgress";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
-import InputLabel from "@mui/material/InputLabel";
 import LinearProgress from "@mui/material/LinearProgress";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import Select from "@mui/material/Select";
@@ -28,8 +27,9 @@ import { EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
 
 import { Option } from "@/components/core/option";
 import { toast } from "@/components/core/toaster";
-import { dayjs } from "@/lib/dayjs";
 import type { AccountItem, AccountsApiResponse } from "@/components/dashboard/account/types";
+import { redirectToLoginIfUnauthorized } from "@/lib/custom-auth/browser";
+import { dayjs } from "@/lib/dayjs";
 import { dashboardTableHeadCellSx } from "@/components/dashboard/dashboard-table-presets";
 
 import { RateCardCategoryHistoryModal } from "./rate-card-category-history-modal";
@@ -158,6 +158,9 @@ export function RateCardsView(): React.JSX.Element {
 		setError(null);
 		try {
 			const res = await fetch("/api/accounts?page=0&pageSize=500", { cache: "no-store" });
+			if (redirectToLoginIfUnauthorized(res)) {
+				return;
+			}
 			const payload = (await res.json().catch(() => ({}))) as Partial<AccountsApiResponse> & { detail?: string };
 			if (!res.ok) {
 				setError(payload.detail ?? "Không tải được danh sách tài khoản");

@@ -18,6 +18,7 @@ import { EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
 import { EyeSlashIcon } from "@phosphor-icons/react/dist/ssr/EyeSlash";
 import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 
+import { redirectToLoginIfUnauthorized } from "@/lib/custom-auth/browser";
 import type { AccountCreatePayload, AccountItem } from "./types";
 
 const boldInputLabelFormControlSx = {
@@ -116,6 +117,9 @@ export function AccountCreateModal({
 				headers: { "Content-Type": "application/json", Accept: "application/json" },
 				body: JSON.stringify(payload),
 			});
+			if (redirectToLoginIfUnauthorized(res)) {
+				return;
+			}
 			const data = (await res.json().catch(() => ({}))) as { detail?: string };
 
 			if (!res.ok) {

@@ -10,13 +10,13 @@ from sqlmodel import Session, col, select
 from app.api.deps import CurrentAccount, SessionDep
 from app.models import (
     Account,
-    AccountRateCard,
-    AccountRateCardCreate,
-    AccountRateCardHistoryEntryPublic,
-    AccountRateCardHistoryPublic,
-    AccountRateCardPublic,
-    AccountRateCardResolvedListPublic,
-    AccountRateCardResolvedPublic,
+    RateCard,
+    RateCardCreate,
+    RateCardHistoryEntryPublic,
+    RateCardHistoryPublic,
+    RateCardPublic,
+    RateCardResolvedListPublic,
+    RateCardResolvedPublic,
     AccountRole,
     Category,
 )
@@ -37,7 +37,7 @@ def _account_in_scope(session: Session, current: Account, account_id: uuid.UUID)
     return False
 
 
-@router.get("/by-account/{account_id}", response_model=AccountRateCardResolvedListPublic)
+@router.get("/by-account/{account_id}", response_model=RateCardResolvedListPublic)
 def read_effective_rate_cards_by_account(
     account_id: uuid.UUID,
     session: SessionDep,
@@ -57,24 +57,24 @@ def read_effective_rate_cards_by_account(
     utc_now = datetime.now(timezone.utc)
     ranked_subquery = (
         select(
-            AccountRateCard.category_id.label("category_id"),
-            AccountRateCard.unit_rate.label("unit_rate"),
-            AccountRateCard.surcharge.label("surcharge"),
-            AccountRateCard.effective_date.label("effective_date"),
+            RateCard.category_id.label("category_id"),
+            RateCard.unit_rate.label("unit_rate"),
+            RateCard.surcharge.label("surcharge"),
+            RateCard.effective_date.label("effective_date"),
             func.row_number()
             .over(
-                partition_by=AccountRateCard.category_id,
+                partition_by=RateCard.category_id,
                 order_by=(
-                    AccountRateCard.effective_date.desc(),
-                    AccountRateCard.created_at.desc(),
+                    RateCard.effective_date.desc(),
+                    RateCard.created_at.desc(),
                 ),
             )
             .label("rn"),
         )
         .where(
             and_(
-                AccountRateCard.account_id == account_id,
-                AccountRateCard.effective_date <= utc_now,
+                RateCard.account_id == account_id,
+                RateCard.effective_date <= utc_now,
             )
         )
         .subquery()
@@ -90,11 +90,11 @@ def read_effective_rate_cards_by_account(
     ).all()
     latest_by_category = {row.category_id: row for row in latest_rows}
 
-    data: list[AccountRateCardResolvedPublic] = []
+    data: list[RateCardResolvedPublic] = []
     for category in root_categories:
         latest = latest_by_category.get(category.id)
         data.append(
-            AccountRateCardResolvedPublic(
+            RateCardResolvedPublic(
                 category_id=category.id,
                 category_name=category.name,
                 unit_rate=(latest.unit_rate if latest else Decimal("0")),
@@ -103,7 +103,7 @@ def read_effective_rate_cards_by_account(
             )
         )
 
-    return AccountRateCardResolvedListPublic(
+    return RateCardResolvedListPublic(
         account_id=account_id,
         effective_on=utc_now.date(),
         data=data,
@@ -113,7 +113,7 @@ def read_effective_rate_cards_by_account(
 
 @router.get(
     "/by-account/{account_id}/category/{category_id}/history",
-    response_model=AccountRateCardHistoryPublic,
+    response_model=RateCardHistoryPublic,
 )
 def read_rate_card_history_for_category(
     account_id: uuid.UUID,
@@ -132,28 +132,28 @@ def read_rate_card_history_for_category(
         raise HTTPException(status_code=404, detail="Category not found")
 
     rows = session.exec(
-        select(AccountRateCard)
+        select(RateCard)
         .where(
-            AccountRateCard.account_id == account_id,
-            AccountRateCard.category_id == category_id,
+            RateCard.account_id == account_id,
+            RateCard.category_id == category_id,
         )
         .order_by(
-            col(AccountRateCard.effective_date).desc(),
-            col(AccountRateCard.created_at).desc(),
+            col(RateCard.effective_date).desc(),
+            col(RateCard.created_at).desc(),
         )
     ).all()
 
     utc_now = datetime.now(timezone.utc)
     past_or_now = [r for r in rows if r.effective_date <= utc_now]
-    active: AccountRateCard | None = None
+    active: RateCard | None = None
     if past_or_now:
         active = max(past_or_now, key=lambda r: (r.effective_date, r.created_at or datetime.min.replace(tzinfo=timezone.utc)))
 
-    history: list[AccountRateCardHistoryEntryPublic] = []
+    history: list[RateCardHistoryEntryPublic] = []
     for row in rows:
         is_current = active is not None and row.id == active.id
         history.append(
-            AccountRateCardHistoryEntryPublic(
+            RateCardHistoryEntryPublic(
                 effective_date=row.effective_date,
                 unit_rate=row.unit_rate,
                 surcharge=row.surcharge,
@@ -161,7 +161,7 @@ def read_rate_card_history_for_category(
             )
         )
 
-    return AccountRateCardHistoryPublic(
+    return RateCardHistoryPublic(
         account_id=account_id,
         category_id=category_id,
         category_name=category.name,
@@ -170,12 +170,12 @@ def read_rate_card_history_for_category(
     )
 
 
-@router.post("/", response_model=AccountRateCardPublic)
+@router.post("/", response_model=RateCardPublic)
 def create_account_rate_card(
     *,
     session: SessionDep,
     current_account: CurrentAccount,
-    body: AccountRateCardCreate,
+    body: RateCardCreate,
 ) -> Any:
     if not _account_in_scope(session, current_account, body.account_id):
         raise HTTPException(
@@ -200,7 +200,7 @@ def create_account_rate_card(
             detail="effective_date must be today or a future date (UTC date)",
         )
 
-    row = AccountRateCard(
+    row = RateCard(
         account_id=body.account_id,
         category_id=body.category_id,
         unit_rate=body.unit_rate,

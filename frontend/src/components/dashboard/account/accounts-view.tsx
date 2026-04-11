@@ -13,6 +13,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 
+import { redirectToLoginIfUnauthorized } from "@/lib/custom-auth/browser";
 import { AccountCreateModal } from "./account-create-modal";
 import { AccountDetailsModal } from "./account-details-modal";
 import { ListPagination } from "@/components/core/list-pagination";
@@ -66,6 +67,9 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 				params.set("keyword", appliedKeyword);
 			}
 			const res = await fetch(`/api/accounts?${params.toString()}`, { method: "GET", cache: "no-store" });
+			if (redirectToLoginIfUnauthorized(res)) {
+				return;
+			}
 			const payload = (await res.json().catch(() => ({}))) as unknown;
 
 			if (!res.ok) {

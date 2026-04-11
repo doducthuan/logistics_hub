@@ -10,8 +10,9 @@ import OutlinedInput from "@mui/material/OutlinedInput";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
-import { AccountL2ChildrenTable } from "./account-l2-children-table";
 import { ListPagination } from "@/components/core/list-pagination";
+import { redirectToLoginIfUnauthorized } from "@/lib/custom-auth/browser";
+import { AccountL2ChildrenTable } from "./account-l2-children-table";
 import type { AccountItem } from "./types";
 
 function extractErrorMessage(payload: unknown): string {
@@ -66,6 +67,9 @@ export function AccountL2ManagedSection({ parentId, enabled }: AccountL2ManagedS
 				if (signal?.aborted) {
 					return;
 				}
+				if (redirectToLoginIfUnauthorized(res)) {
+					return;
+				}
 				const payload = (await res.json().catch(() => ({}))) as unknown;
 				if (signal?.aborted) {
 					return;
@@ -91,8 +95,8 @@ export function AccountL2ManagedSection({ parentId, enabled }: AccountL2ManagedS
 				if (appliedKeyword === "" && page === 0) {
 					setHasAnyL2(total > 0);
 				}
-			} catch (e) {
-				if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) {
+			} catch (error_) {
+				if (signal?.aborted || (error_ instanceof DOMException && error_.name === "AbortError")) {
 					return;
 				}
 				setError("Không thể kết nối máy chủ");

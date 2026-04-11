@@ -22,6 +22,7 @@ import { EyeSlashIcon } from "@phosphor-icons/react/dist/ssr/EyeSlash";
 import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 
 import { Option } from "@/components/core/option";
+import { redirectToLoginIfUnauthorized } from "@/lib/custom-auth/browser";
 import { dayjs } from "@/lib/dayjs";
 
 import { AccountL2ManagedSection } from "./account-l2-managed-section";
@@ -114,6 +115,9 @@ export function AccountDetailsModal({
 				}
 
 				const res = await fetch(`/api/accounts/${encodeURIComponent(id)}`, { cache: "no-store" });
+				if (redirectToLoginIfUnauthorized(res)) {
+					return;
+				}
 				if (!res.ok) {
 					nameById.set(id, "");
 					continue;
@@ -175,6 +179,9 @@ export function AccountDetailsModal({
 				headers: { "Content-Type": "application/json", Accept: "application/json" },
 				body: JSON.stringify(body),
 			});
+			if (redirectToLoginIfUnauthorized(res)) {
+				return;
+			}
 			const payload = (await res.json().catch(() => ({}))) as { detail?: string };
 			if (!res.ok) {
 				setError(payload.detail ?? "Cập nhật thất bại");

@@ -61,16 +61,15 @@ export function mapAccountToUser(account: AccountPublicResponse): User {
 	};
 }
 
-export async function validateAccessToken(accessToken: string): Promise<boolean> {
-	try {
-		const account = await fetchAccountByAccessToken(accessToken);
-		return account !== null;
-	} catch {
-		return false;
-	}
-}
+export type FetchAccountMeResult =
+	| { ok: true; account: AccountPublicResponse }
+	| { ok: false; status: number };
 
-export async function fetchAccountByAccessToken(accessToken: string): Promise<AccountPublicResponse | null> {
+/**
+ * GET /accounts/me — dùng chung middleware, BFF, profile.
+ * 404: tài khoản không còn (hoặc route không khớp) → coi phiên hết hiệu lực.
+ */
+export async function fetchAccountMe(accessToken: string): Promise<FetchAccountMeResult> {
 	const res = await fetch(`${getApiBaseUrl()}/api/v1/accounts/me`, {
 		method: "GET",
 		headers: {
@@ -81,10 +80,29 @@ export async function fetchAccountByAccessToken(accessToken: string): Promise<Ac
 	});
 
 	if (!res.ok) {
-		return null;
+		return { ok: false, status: res.status };
 	}
 
-	return (await res.json()) as AccountPublicResponse;
+	const account = (await res.json()) as AccountPublicResponse;
+	return { ok: true, account };
+}
+
+export async function validateAccessToken(accessToken: string): Promise<boolean> {
+	try {
+		const me = await fetchAccountMe(accessToken);
+		return me.ok;
+	} catch {
+		return false;
+	}
+}
+
+export async function fetchAccountByAccessToken(accessToken: string): Promise<AccountPublicResponse | null> {
+	try {
+		const me = await fetchAccountMe(accessToken);
+		return me.ok ? me.account : null;
+	} catch {
+		return null;
+	}
 }
 
 export async function loginAccessToken(
