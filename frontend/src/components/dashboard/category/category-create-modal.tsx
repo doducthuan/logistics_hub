@@ -17,12 +17,26 @@ import Typography from "@mui/material/Typography";
 import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 
 import { InlineEditableGrid } from "@/components/core/inline-editable-grid";
+import { redirectToLoginIfUnauthorized } from "@/lib/custom-auth/browser";
 
 import {
 	CATEGORY_CHILD_COLUMNS,
 	createEmptyCategoryChildRow,
 } from "./category-child-grid-config";
 import type { InlineEditableGridRow } from "@/components/core/inline-editable-grid";
+import type { CategoryItem } from "./types";
+
+function parseCategoryItem(body: unknown): CategoryItem | null {
+	if (!body || typeof body !== "object") {
+		return null;
+	}
+	const o = body as Partial<CategoryItem> & { id?: unknown };
+	const id = typeof o.id === "string" ? o.id : o.id != null ? String(o.id) : "";
+	if (!id) {
+		return null;
+	}
+	return { ...(o as CategoryItem), id };
+}
 
 const boldInputLabelFormControlSx = {
 	"& .MuiInputLabel-root": { fontWeight: 600 },
@@ -46,7 +60,8 @@ function defaultForm(): FormState {
 export interface CategoryCreateModalProps {
 	open: boolean;
 	onClose: () => void;
-	onCreated: () => Promise<void>;
+	/** Loại gốc vừa tạo (API trả đủ trường) — UI có thể prepend, tránh refetch cả danh sách. */
+	onCreated: (parent: CategoryItem) => void | Promise<void>;
 }
 
 export function CategoryCreateModal({ open, onClose, onCreated }: CategoryCreateModalProps): React.JSX.Element {
@@ -73,55 +88,45 @@ export function CategoryCreateModal({ open, onClose, onCreated }: CategoryCreate
 		setLoading(true);
 		setError(null);
 		try {
-			const parentPayload: Record<string, unknown> = {
+			const toCreate = childRows.filter((r) => r.name.trim().length > 0);
+			const bundlePayload: Record<string, unknown> = {
 				name: form.name.trim(),
-				parent_id: null,
+				children: toCreate.map((row) => {
+					const c: Record<string, unknown> = { name: row.name.trim() };
+					if (row.description.trim()) {
+						c.description = row.description.trim();
+					}
+					return c;
+				}),
 			};
 			if (form.description.trim()) {
-				parentPayload.description = form.description.trim();
+				bundlePayload.description = form.description.trim();
 			}
-			const res = await fetch("/api/categories", {
+
+			const res = await fetch("/api/categories/with-children", {
 				method: "POST",
 				headers: { "Content-Type": "application/json", Accept: "application/json" },
-				body: JSON.stringify(parentPayload),
+				body: JSON.stringify(bundlePayload),
 			});
-			const data = (await res.json().catch(() => ({}))) as { detail?: string; id?: string };
-			if (!res.ok) {
-				setError(typeof data.detail === "string" ? data.detail : "Thêm mới thất bại");
+			if (redirectToLoginIfUnauthorized(res)) {
 				return;
 			}
-			const parentId = data.id;
-			if (!parentId) {
+			const parentBody = (await res.json().catch(() => ({}))) as unknown;
+			if (!res.ok) {
+				const detail =
+					parentBody && typeof parentBody === "object" && "detail" in parentBody && typeof (parentBody as { detail?: string }).detail === "string"
+						? (parentBody as { detail: string }).detail
+						: undefined;
+				setError(detail ?? "Thêm mới thất bại");
+				return;
+			}
+			const parentItem = parseCategoryItem(parentBody);
+			if (!parentItem) {
 				setError("Phản hồi máy chủ không hợp lệ");
 				return;
 			}
 
-			const toCreate = childRows.filter((r) => r.name.trim().length > 0);
-			for (const row of toCreate) {
-				const body: Record<string, unknown> = {
-					name: row.name.trim(),
-					parent_id: parentId,
-				};
-				if (row.description.trim()) {
-					body.description = row.description.trim();
-				}
-				const cr = await fetch("/api/categories", {
-					method: "POST",
-					headers: { "Content-Type": "application/json", Accept: "application/json" },
-					body: JSON.stringify(body),
-				});
-				if (!cr.ok) {
-					const err = (await cr.json().catch(() => ({}))) as { detail?: string };
-					setError(
-						typeof err.detail === "string"
-							? `Loại con "${row.name.trim()}": ${err.detail}`
-							: `Không tạo được loại con "${row.name.trim()}"`
-					);
-					return;
-				}
-			}
-
-			await onCreated();
+			await onCreated(parentItem);
 			onClose();
 		} catch {
 			setError("Không thể kết nối máy chủ");

@@ -41,3 +41,34 @@ def test_create_category_forbidden_for_non_admin(
         json={"name": "Hack"},
     )
     assert r.status_code == 403
+
+
+def test_create_category_with_children_one_request(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    r = client.post(
+        f"{settings.API_V1_STR}/categories/with-children",
+        headers=superuser_token_headers,
+        json={
+            "name": "Nhóm bundle",
+            "description": "cha",
+            "children": [
+                {"name": "Con 1", "description": "a"},
+                {"name": "Con 2"},
+            ],
+        },
+    )
+    assert r.status_code == 200
+    parent = r.json()
+    assert parent["name"] == "Nhóm bundle"
+    pid = parent["id"]
+
+    listed = client.get(
+        f"{settings.API_V1_STR}/categories/",
+        headers=superuser_token_headers,
+        params={"parent_id": pid, "limit": 50},
+    )
+    assert listed.status_code == 200
+    kids = listed.json()["data"]
+    names = {x["name"] for x in kids}
+    assert names == {"Con 1", "Con 2"}

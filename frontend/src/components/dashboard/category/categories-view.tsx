@@ -14,6 +14,7 @@ import Typography from "@mui/material/Typography";
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 
 import { useAuth } from "@/components/auth/custom/auth-context";
+import { redirectToLoginIfUnauthorized } from "@/lib/custom-auth/browser";
 
 import { CategoriesTable } from "./categories-table";
 import { CategoryCreateModal } from "./category-create-modal";
@@ -63,12 +64,14 @@ export function CategoriesView({ initialPayload = null }: CategoriesViewProps): 
 		everLeftBootstrapRef.current = true;
 	}
 
-	const loadData = React.useCallback(async (signal?: AbortSignal) => {
+	const loadData = React.useCallback(
+		async (signal?: AbortSignal, opts?: { page?: number }) => {
+		const effectivePage = opts?.page ?? page;
 		setLoading(true);
 		setError(null);
 		try {
 			const params = new URLSearchParams({
-				page: String(page),
+				page: String(effectivePage),
 				pageSize: String(rowsPerPage),
 			});
 			if (appliedKeyword) {
@@ -78,6 +81,9 @@ export function CategoriesView({ initialPayload = null }: CategoriesViewProps): 
 				cache: "no-store",
 				signal,
 			});
+			if (redirectToLoginIfUnauthorized(res)) {
+				return;
+			}
 			const payload = (await res.json().catch(() => ({}))) as unknown;
 			if (!res.ok) {
 				setError(extractErrorMessage(payload));
@@ -94,7 +100,9 @@ export function CategoriesView({ initialPayload = null }: CategoriesViewProps): 
 		} finally {
 			setLoading(false);
 		}
-	}, [appliedKeyword, page, rowsPerPage]);
+	},
+		[appliedKeyword, page, rowsPerPage]
+	);
 
 	React.useEffect(() => {
 		const skipBecauseServerHydrated =
@@ -234,9 +242,18 @@ export function CategoriesView({ initialPayload = null }: CategoriesViewProps): 
 					onClose={() => {
 						setCreateOpen(false);
 					}}
-					onCreated={async () => {
+					onCreated={async (parent) => {
+						const canMergeOptimistic = appliedKeyword === "" && page === 0;
 						setPage(0);
-						await loadData();
+						if (canMergeOptimistic) {
+							setRows((prev) => {
+								const rest = prev.filter((r) => r.id !== parent.id);
+								return [parent, ...rest].slice(0, rowsPerPage);
+							});
+							setCount((c) => c + 1);
+							return;
+						}
+						await loadData(undefined, { page: 0 });
 					}}
 					open={createOpen}
 				/>

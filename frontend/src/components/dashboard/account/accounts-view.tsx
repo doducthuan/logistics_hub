@@ -55,12 +55,14 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 	/** Có payload từ RSC lúc mount — không refetch client khi vẫn đúng trang/filter khớp server. */
 	const hadInitialOnMountRef = React.useRef(hasInitial);
 
-	const loadData = React.useCallback(async () => {
+	const loadData = React.useCallback(
+		async (opts?: { page?: number }) => {
+		const effectivePage = opts?.page ?? page;
 		setLoading(true);
 		setError(null);
 		try {
 			const params = new URLSearchParams({
-				page: String(page),
+				page: String(effectivePage),
 				pageSize: String(rowsPerPage),
 			});
 			if (appliedKeyword) {
@@ -88,7 +90,9 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 		} finally {
 			setLoading(false);
 		}
-	}, [appliedKeyword, page, rowsPerPage]);
+	},
+		[appliedKeyword, page, rowsPerPage]
+	);
 
 	React.useEffect(() => {
 		if (hadInitialOnMountRef.current) {
@@ -225,9 +229,23 @@ export function AccountsView({ initialPayload = null }: AccountsViewProps): Reac
 					onClose={() => {
 						setCreateOpen(false);
 					}}
-					onCreated={async () => {
+					onCreated={async (created) => {
+						const canMergeOptimistic =
+							appliedKeyword === "" && page === 0 && created != null;
 						setPage(0);
-						await loadData();
+						if (canMergeOptimistic) {
+							setManagedAccounts((prev) => {
+								const rest = prev.filter((a) => a.id !== created.id);
+								return [created, ...rest].slice(0, rowsPerPage);
+							});
+							setAllScopeAccounts((prev) => {
+								const rest = prev.filter((a) => a.id !== created.id);
+								return [created, ...rest];
+							});
+							setCount((c) => c + 1);
+							return;
+						}
+						await loadData({ page: 0 });
 					}}
 					open={createOpen}
 				/>

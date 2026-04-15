@@ -165,6 +165,21 @@ class CategoryCreate(CategoryCore):
     pass
 
 
+class CategoryChildInlineCreate(SQLModel):
+    """Loại con gửi kèm khi tạo loại gốc một lần (POST /categories/with-children)."""
+
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=2000)
+
+
+class CategoryCreateWithChildren(SQLModel):
+    """Tạo loại gốc và các loại con trong một transaction."""
+
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=2000)
+    children: list[CategoryChildInlineCreate] = Field(default_factory=list)
+
+
 class CategoryUpdate(SQLModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
@@ -239,6 +254,37 @@ class RateCardCreate(RateCardCore):
     pass
 
 
+class RateCardBatchLine(SQLModel):
+    """Một dòng trong yêu cầu lưu hàng loạt (cùng account_id ở payload ngoài)."""
+
+    category_id: uuid.UUID = Field(foreign_key="categories.id")
+    unit_rate: Decimal = Field(
+        default=Decimal("0"),
+        max_digits=15,
+        decimal_places=2,
+    )
+    surcharge: Decimal = Field(
+        default=Decimal("0"),
+        max_digits=15,
+        decimal_places=2,
+    )
+    effective_date: datetime = Field(
+        sa_type=DateTime(timezone=True),  # type: ignore[call-overload]
+    )
+
+    @field_validator("effective_date")
+    @classmethod
+    def ensure_effective_date_is_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            raise ValueError("effective_date must include timezone (UTC)")
+        return value.astimezone(timezone.utc)
+
+
+class RateCardBatchCreate(SQLModel):
+    account_id: uuid.UUID = Field(foreign_key="accounts.id")
+    items: list[RateCardBatchLine] = Field(min_length=1, max_length=500)
+
+
 class RateCard(RateCardCore, EntityBase, table=True):
     __tablename__ = "rate_cards"
     pass
@@ -251,6 +297,11 @@ class RateCardPublic(RateCardCore):
     created_by_id: uuid.UUID | None = None
     updated_by_id: uuid.UUID | None = None
     is_active: bool = True
+
+
+class RateCardBatchResult(SQLModel):
+    data: list[RateCardPublic]
+    count: int
 
 
 class RateCardsPublic(SQLModel):

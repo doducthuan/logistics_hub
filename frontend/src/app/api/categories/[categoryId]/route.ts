@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { clearAccessTokenOnNextResponse } from "@/lib/custom-auth/access-token-cookie";
 import { getApiBaseUrl } from "@/lib/custom-auth/api";
 
 interface RouteParams {
@@ -30,6 +31,10 @@ export async function GET(_: Request, context: RouteParams): Promise<NextRespons
 	});
 
 	const data = (await response.json().catch(() => ({}))) as unknown;
+	if (response.status === 401) {
+		const res = NextResponse.json(data, { status: 401 });
+		return clearAccessTokenOnNextResponse(res);
+	}
 	return NextResponse.json(data, { status: response.status });
 }
 
@@ -54,6 +59,10 @@ export async function PATCH(request: Request, context: RouteParams): Promise<Nex
 	});
 
 	const data = (await response.json().catch(() => ({}))) as unknown;
+	if (response.status === 401) {
+		const res = NextResponse.json(data, { status: 401 });
+		return clearAccessTokenOnNextResponse(res);
+	}
 	return NextResponse.json(data, { status: response.status });
 }
 
@@ -75,5 +84,9 @@ export async function DELETE(_: Request, context: RouteParams): Promise<NextResp
 	});
 
 	const data = (await response.json().catch(() => ({}))) as unknown;
+	if (response.status === 401) {
+		const res = NextResponse.json(data, { status: 401 });
+		return clearAccessTokenOnNextResponse(res);
+	}
 	return NextResponse.json(data, { status: response.status });
 }

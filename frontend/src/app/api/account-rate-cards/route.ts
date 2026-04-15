@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { clearAccessTokenOnNextResponse } from "@/lib/custom-auth/access-token-cookie";
 import { getApiBaseUrl } from "@/lib/custom-auth/api";
 
 async function getAccessToken(): Promise<string | null> {
@@ -30,5 +31,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 		cache: "no-store",
 	});
 	const data = (await response.json().catch(() => ({}))) as unknown;
+	if (response.status === 401) {
+		const res = NextResponse.json(data, { status: 401 });
+		return clearAccessTokenOnNextResponse(res);
+	}
 	return NextResponse.json(data, { status: response.status });
 }

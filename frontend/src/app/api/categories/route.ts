@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { fetchCategoriesPageForCurrentSession } from "@/lib/categories/fetch-categories-server";
+import { clearAccessTokenOnNextResponse } from "@/lib/custom-auth/access-token-cookie";
 import { getApiBaseUrl } from "@/lib/custom-auth/api";
 
 async function getAccessToken(): Promise<string | null> {
@@ -24,6 +25,10 @@ export async function GET(request: Request): Promise<NextResponse> {
 	const result = await fetchCategoriesPageForCurrentSession({ parentId, page, pageSize, keyword });
 
 	if (!result.ok) {
+		if (result.status === 401) {
+			const res = NextResponse.json({ detail: result.detail }, { status: 401 });
+			return clearAccessTokenOnNextResponse(res);
+		}
 		return NextResponse.json({ detail: result.detail }, { status: result.status });
 	}
 
@@ -50,5 +55,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 	});
 
 	const data = (await response.json().catch(() => ({}))) as unknown;
+	if (response.status === 401) {
+		const res = NextResponse.json(data, { status: 401 });
+		return clearAccessTokenOnNextResponse(res);
+	}
 	return NextResponse.json(data, { status: response.status });
 }

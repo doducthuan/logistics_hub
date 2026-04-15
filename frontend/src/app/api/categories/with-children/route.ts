@@ -9,22 +9,26 @@ async function getAccessToken(): Promise<string | null> {
 	return cookieStore.get("access_token")?.value ?? null;
 }
 
-export async function GET(
-	_request: Request,
-	context: { params: Promise<{ accountId: string }> }
-): Promise<NextResponse> {
+function unauthorizedResponse(): NextResponse {
+	return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+}
+
+export async function POST(request: Request): Promise<NextResponse> {
 	const accessToken = await getAccessToken();
 	if (!accessToken) {
-		return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+		return unauthorizedResponse();
 	}
 
-	const { accountId } = await context.params;
-	const response = await fetch(`${getApiBaseUrl()}/api/v1/account-rate-cards/by-account/${encodeURIComponent(accountId)}`, {
-		method: "GET",
+	const body = (await request.json()) as unknown;
+
+	const response = await fetch(`${getApiBaseUrl()}/api/v1/categories/with-children`, {
+		method: "POST",
 		headers: {
 			Authorization: `Bearer ${accessToken}`,
+			"Content-Type": "application/json",
 			Accept: "application/json",
 		},
+		body: JSON.stringify(body),
 		cache: "no-store",
 	});
 

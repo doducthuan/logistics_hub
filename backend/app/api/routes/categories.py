@@ -12,6 +12,7 @@ from app.models import (
     CategoriesPublic,
     Category,
     CategoryCreate,
+    CategoryCreateWithChildren,
     CategoryPublic,
     CategoryUpdate,
     Message,
@@ -123,6 +124,26 @@ def create_category(
         db_row = crud.create_category(
             session=session,
             category_in=body,
+            created_by_id=admin.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    audit_ids = {x for x in (db_row.created_by_id, db_row.updated_by_id) if x is not None}
+    return _category_to_public(db_row, _audit_name_map(session, audit_ids))
+
+
+@router.post("/with-children", response_model=CategoryPublic)
+def create_category_with_children(
+    *,
+    session: SessionDep,
+    admin: CurrentAdmin,
+    body: CategoryCreateWithChildren,
+) -> Any:
+    """Admin: tạo loại gốc và nhiều loại con trong một request (một transaction)."""
+    try:
+        db_row = crud.create_category_with_children(
+            session=session,
+            body=body,
             created_by_id=admin.id,
         )
     except ValueError as e:

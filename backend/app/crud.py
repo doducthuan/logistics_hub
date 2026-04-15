@@ -12,6 +12,7 @@ from app.models import (
     AccountUpdate,
     Category,
     CategoryCreate,
+    CategoryCreateWithChildren,
     CategoryUpdate,
     Item,
     ItemCreate,
@@ -201,6 +202,66 @@ def create_category(
     session.commit()
     session.refresh(db_obj)
     return db_obj
+
+
+def create_category_with_children(
+    *,
+    session: Session,
+    body: CategoryCreateWithChildren,
+    created_by_id: uuid.UUID,
+) -> Category:
+    """Tạo loại gốc (parent_id=null) và các loại con trong một lần commit."""
+    parent_name = body.name.strip()
+    if not parent_name:
+        raise ValueError("Tên loại mặt hàng không hợp lệ")
+    if get_category_by_name_under_parent(
+        session=session, name=parent_name, parent_id=None
+    ):
+        raise ValueError("Tên loại mặt hàng đã tồn tại trong cùng cấp")
+
+    parent_desc = body.description.strip() if body.description and body.description.strip() else None
+
+    parent = Category(
+        name=parent_name,
+        description=parent_desc,
+        parent_id=None,
+        created_by_id=created_by_id,
+        updated_by_id=created_by_id,
+    )
+    session.add(parent)
+    session.flush()
+
+    seen_child_names: set[str] = set()
+    for child in body.children:
+        child_name = child.name.strip()
+        if not child_name:
+            raise ValueError("Tên loại mặt hàng con không được để trống")
+        if child_name in seen_child_names:
+            raise ValueError(f"Trùng tên loại con trong cùng yêu cầu: {child_name}")
+        seen_child_names.add(child_name)
+        if get_category_by_name_under_parent(
+            session=session, name=child_name, parent_id=parent.id
+        ):
+            raise ValueError("Tên loại mặt hàng đã tồn tại trong cùng cấp")
+
+        child_desc = (
+            child.description.strip()
+            if child.description and child.description.strip()
+            else None
+        )
+        session.add(
+            Category(
+                name=child_name,
+                description=child_desc,
+                parent_id=parent.id,
+                created_by_id=created_by_id,
+                updated_by_id=created_by_id,
+            )
+        )
+
+    session.commit()
+    session.refresh(parent)
+    return parent
 
 
 def update_category(

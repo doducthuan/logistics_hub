@@ -10,18 +10,36 @@ from sqlmodel import Session, col, select
 from app.api.deps import CurrentAccount, SessionDep
 from app.models import (
     Account,
+    AccountRole,
+    Category,
     RateCard,
+    RateCardBatchCreate,
+    RateCardBatchResult,
     RateCardCreate,
     RateCardHistoryEntryPublic,
     RateCardHistoryPublic,
     RateCardPublic,
     RateCardResolvedListPublic,
     RateCardResolvedPublic,
-    AccountRole,
-    Category,
 )
 
 router = APIRouter(prefix="/account-rate-cards", tags=["account-rate-cards"])
+
+
+def _rate_card_row_to_public(row: RateCard) -> RateCardPublic:
+    return RateCardPublic(
+        id=row.id,
+        account_id=row.account_id,
+        category_id=row.category_id,
+        unit_rate=row.unit_rate,
+        surcharge=row.surcharge,
+        effective_date=row.effective_date,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        created_by_id=row.created_by_id,
+        updated_by_id=row.updated_by_id,
+        is_active=row.is_active,
+    )
 
 
 def _account_in_scope(session: Session, current: Account, account_id: uuid.UUID) -> bool:
@@ -213,3 +231,68 @@ def create_account_rate_card(
     session.commit()
     session.refresh(row)
     return row
+
+
+@router.post("/batch", response_model=RateCardBatchResult)
+def create_account_rate_cards_batch(
+    *,
+    session: SessionDep,
+    current_account: CurrentAccount,
+    body: RateCardBatchCreate,
+) -> Any:
+    """Lưu nhiều dòng giá cho cùng một tài khoản trong một transaction (chỉ gửi dòng đã đổi)."""
+    if not _account_in_scope(session, current_account, body.account_id):
+        raise HTTPException(
+            status_code=403,
+            detail="The account doesn't have enough privileges",
+        )
+    if body.account_id == current_account.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot create rate card versions for your own account; view only.",
+        )
+
+    utc_today = datetime.now(timezone.utc).date()
+    seen_categories: set[uuid.UUID] = set()
+    for i, item in enumerate(body.items):
+        if item.category_id in seen_categories:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Duplicate category_id in batch at index {i}",
+            )
+        seen_categories.add(item.category_id)
+        category = session.get(Category, item.category_id)
+        if category is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Category not found at index {i}",
+            )
+        if item.effective_date.date() < utc_today:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "effective_date must be today or a future date (UTC) "
+                    f"at index {i}"
+                ),
+            )
+
+    created: list[RateCard] = []
+    for item in body.items:
+        row = RateCard(
+            account_id=body.account_id,
+            category_id=item.category_id,
+            unit_rate=item.unit_rate,
+            surcharge=item.surcharge,
+            effective_date=item.effective_date,
+            created_by_id=current_account.id,
+            updated_by_id=current_account.id,
+        )
+        session.add(row)
+        created.append(row)
+    session.commit()
+    for r in created:
+        session.refresh(r)
+    return RateCardBatchResult(
+        data=[_rate_card_row_to_public(r) for r in created],
+        count=len(created),
+    )

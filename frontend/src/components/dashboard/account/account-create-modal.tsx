@@ -53,7 +53,8 @@ export interface AccountCreateModalProps {
 	open: boolean;
 	currentAccount: AccountItem;
 	onClose: () => void;
-	onCreated: () => Promise<void>;
+	/** Trả về bản ghi mới từ API để UI có thể cập nhật cục bộ, tránh refetch cả danh sách. */
+	onCreated: (account: AccountItem) => void | Promise<void>;
 }
 
 export function AccountCreateModal({
@@ -120,14 +121,21 @@ export function AccountCreateModal({
 			if (redirectToLoginIfUnauthorized(res)) {
 				return;
 			}
-			const data = (await res.json().catch(() => ({}))) as { detail?: string };
+			const body = (await res.json().catch(() => ({}))) as unknown;
 
 			if (!res.ok) {
-				setError(data.detail ?? "Thêm mới tài khoản thất bại");
+				const detail =
+					body && typeof body === "object" && "detail" in body && typeof (body as { detail?: string }).detail === "string"
+						? (body as { detail: string }).detail
+						: undefined;
+				setError(detail ?? "Thêm mới tài khoản thất bại");
 				return;
 			}
 
-			await onCreated();
+			const raw = body as AccountItem;
+			const created: AccountItem =
+				typeof raw?.id === "string" ? raw : { ...raw, id: String(raw?.id ?? "") };
+			await onCreated(created);
 			onClose();
 		} catch {
 			setError("Không thể kết nối máy chủ");

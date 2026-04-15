@@ -21,6 +21,7 @@ import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 import { InlineEditableGrid } from "@/components/core/inline-editable-grid";
 import type { InlineEditableGridRow } from "@/components/core/inline-editable-grid";
 import { Option } from "@/components/core/option";
+import { redirectToLoginIfUnauthorized } from "@/lib/custom-auth/browser";
 import { dayjs } from "@/lib/dayjs";
 
 import {
@@ -149,6 +150,9 @@ export function CategoryDetailsModal({
 					pageSize: "500",
 				});
 				const res = await fetch(`/api/categories?${params.toString()}`, { cache: "no-store" });
+				if (redirectToLoginIfUnauthorized(res)) {
+					return;
+				}
 				const payload = (await res.json().catch(() => ({}))) as { data?: CategoryItem[] };
 				if (cancelled) {
 					return;
@@ -209,6 +213,9 @@ export function CategoryDetailsModal({
 					is_active: form.is_active,
 				}),
 			});
+			if (redirectToLoginIfUnauthorized(res)) {
+				return;
+			}
 			const payload = (await res.json().catch(() => ({}))) as { detail?: string };
 			if (!res.ok) {
 				setError(payload.detail ?? "Cập nhật thất bại");
@@ -222,6 +229,9 @@ export function CategoryDetailsModal({
 			for (const id of initialChildIdsRef.current) {
 				if (!currentIds.has(id)) {
 					const dr = await fetch(`/api/categories/${encodeURIComponent(id)}`, { method: "DELETE" });
+					if (redirectToLoginIfUnauthorized(dr)) {
+						return;
+					}
 					if (!dr.ok) {
 						const err = (await dr.json().catch(() => ({}))) as { detail?: string };
 						setError(typeof err.detail === "string" ? err.detail : "Không xóa được loại con");
@@ -239,6 +249,9 @@ export function CategoryDetailsModal({
 						headers: { "Content-Type": "application/json", Accept: "application/json" },
 						body: JSON.stringify({ name, description: desc }),
 					});
+					if (redirectToLoginIfUnauthorized(pr)) {
+						return;
+					}
 					if (!pr.ok) {
 						const err = (await pr.json().catch(() => ({}))) as { detail?: string };
 						setError(typeof err.detail === "string" ? err.detail : "Cập nhật loại con thất bại");
@@ -257,6 +270,9 @@ export function CategoryDetailsModal({
 						headers: { "Content-Type": "application/json", Accept: "application/json" },
 						body: JSON.stringify(body),
 					});
+					if (redirectToLoginIfUnauthorized(pr)) {
+						return;
+					}
 					if (!pr.ok) {
 						const err = (await pr.json().catch(() => ({}))) as { detail?: string };
 						setError(

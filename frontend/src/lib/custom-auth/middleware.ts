@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { paths } from "@/paths";
 import { clearAccessTokenOnNextResponse } from "@/lib/custom-auth/access-token-cookie";
-import { fetchAccountMe, validateAccessToken } from "@/lib/custom-auth/api";
+import { validateAccessToken } from "@/lib/custom-auth/api";
 import { hasJwtSecretConfigured, isJwtAccessTokenValid } from "@/lib/custom-auth/jwt-verify";
 
 function normalizePath(pathname: string): string {
@@ -49,14 +49,12 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 		if (!jwtOk) {
 			return redirectToLogin(req);
 		}
-		/* JWT còn hạn nhưng tài khoản có thể đã xóa — GET /me 404/401 phải hủy phiên. */
-		const me = await fetchAccountMe(token);
-		if (!me.ok) {
-			if (me.status === 404 || me.status === 401) {
-				return redirectToLogin(req);
-			}
-			return NextResponse.next({ request: req });
-		}
+		/*
+		 * Không gọi GET /accounts/me ở đây: mỗi RSC/BFF/API vẫn gửi Bearer tới FastAPI,
+		 * `get_current_account` luôn kiểm tra DB (404 inactive, v.v.). Tránh 2× /me trên
+		 * cùng một request (middleware + route handler). Tài khoản bị xóa vẫn bị đẩy ra
+		 * ở lần tải dữ liệu / gọi API tiếp theo (cookie được BFF xóa khi 401/404).
+		 */
 		return NextResponse.next({ request: req });
 	}
 

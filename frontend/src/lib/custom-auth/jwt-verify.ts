@@ -2,6 +2,9 @@ import { jwtVerify } from "jose";
 
 const HS256 = "HS256";
 
+/** Trùng `PASSWORD_RESET_JWT_TYP` backend — token đặt lại mật khẩu không được dùng như access token. */
+const PASSWORD_RESET_JWT_TYP = "pwd_reset";
+
 function getJwtSecret(): Uint8Array | null {
 	const raw = process.env.AUTH_JWT_SECRET ?? process.env.SECRET_KEY;
 	if (!raw) {
@@ -20,7 +23,11 @@ export async function isJwtAccessTokenValid(token: string): Promise<boolean> {
 		return false;
 	}
 	try {
-		await jwtVerify(token, secret, { algorithms: [HS256] });
+		const { payload } = await jwtVerify(token, secret, { algorithms: [HS256] });
+		/* Access token chỉ có sub + exp; token reset có typ — không coi là phiên đăng nhập. */
+		if (payload.typ === PASSWORD_RESET_JWT_TYP) {
+			return false;
+		}
 		return true;
 	} catch {
 		return false;

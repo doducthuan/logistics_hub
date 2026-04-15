@@ -35,6 +35,12 @@ import { dashboardTableHeadCellSx } from "@/components/dashboard/dashboard-table
 import { RateCardCategoryHistoryModal } from "./rate-card-category-history-modal";
 import type { RateCardRow, RateCardsByAccountResponse } from "./types";
 
+/**
+ * Một fetch `/api/accounts` trên BFF = GET /me + GET danh sách. React 18 Strict Mode (dev)
+ * có thể chạy effect hai lần → gộp promise đang bay để chỉ một round-trip tới Next (và FastAPI).
+ */
+let rateCardsAccountsFetchInflight: Promise<void> | null = null;
+
 type EditableRateCardRow = RateCardRow & {
 	_unitRateInput: string;
 	_surchargeInput: string;
@@ -154,33 +160,47 @@ export function RateCardsView(): React.JSX.Element {
 	);
 
 	const loadAccounts = React.useCallback(async () => {
-		setAccountsLoading(true);
-		setError(null);
+		if (rateCardsAccountsFetchInflight) {
+			await rateCardsAccountsFetchInflight;
+			return;
+		}
+		rateCardsAccountsFetchInflight = (async () => {
+			setAccountsLoading(true);
+			setError(null);
+			try {
+				const res = await fetch("/api/accounts?page=0&pageSize=500", { cache: "no-store" });
+				if (redirectToLoginIfUnauthorized(res)) {
+					return;
+				}
+				const payload = (await res.json().catch(() => ({}))) as Partial<AccountsApiResponse> & {
+					detail?: string;
+				};
+				if (!res.ok) {
+					setError(payload.detail ?? "Không tải được danh sách tài khoản");
+					return;
+				}
+				const current = payload.current ?? null;
+				const accountData = Array.isArray(payload.data) ? payload.data : [];
+				setViewerAccount(current);
+				setAccounts(accountData);
+			} catch {
+				setError("Không thể kết nối máy chủ");
+			} finally {
+				setAccountsLoading(false);
+			}
+		})();
 		try {
-			const res = await fetch("/api/accounts?page=0&pageSize=500", { cache: "no-store" });
-			if (redirectToLoginIfUnauthorized(res)) {
-				return;
-			}
-			const payload = (await res.json().catch(() => ({}))) as Partial<AccountsApiResponse> & { detail?: string };
-			if (!res.ok) {
-				setError(payload.detail ?? "Không tải được danh sách tài khoản");
-				return;
-			}
-			const current = payload.current ?? null;
-			const accountData = Array.isArray(payload.data) ? payload.data : [];
-			setViewerAccount(current);
-			setAccounts(accountData);
-		} catch {
-			setError("Không thể kết nối máy chủ");
+			await rateCardsAccountsFetchInflight;
 		} finally {
-			setAccountsLoading(false);
+			rateCardsAccountsFetchInflight = null;
 		}
 	}, []);
 
-	const loadRateCards = React.useCallback(async (accountId: string) => {
+	const loadRateCards = React.useCallback(async (accountId: string): Promise<boolean> => {
 		if (!accountId) {
 			setRows([]);
-			return;
+			setOriginalRows(new Map());
+			return true;
 		}
 		setRateCardsLoading(true);
 		setError(null);
@@ -191,7 +211,7 @@ export function RateCardsView(): React.JSX.Element {
 			const payload = (await res.json().catch(() => ({}))) as Partial<RateCardsByAccountResponse> & { detail?: string };
 			if (!res.ok) {
 				setError(payload.detail ?? "Không tải được bảng giá cước");
-				return;
+				return false;
 			}
 			const data = Array.isArray(payload.data) ? payload.data : [];
 			const nextRows = mapEditableRows(data);
@@ -207,8 +227,10 @@ export function RateCardsView(): React.JSX.Element {
 					])
 				)
 			);
+			return true;
 		} catch {
 			setError("Không thể kết nối máy chủ");
+			return false;
 		} finally {
 			setRateCardsLoading(false);
 		}
@@ -299,25 +321,50 @@ export function RateCardsView(): React.JSX.Element {
 					setError(`Vui lòng chọn ngày áp dụng cho "${row.category_name}"`);
 					return;
 				}
-				const response = await fetch("/api/account-rate-cards", {
-					method: "POST",
-					headers: { "Content-Type": "application/json", Accept: "application/json" },
-					body: JSON.stringify({
-						account_id: selectedAccountId,
+			}
+
+			const response = await fetch("/api/account-rate-cards/batch", {
+				method: "POST",
+				headers: { "Content-Type": "application/json", Accept: "application/json" },
+				body: JSON.stringify({
+					account_id: selectedAccountId,
+					items: changedRows.map((row) => ({
 						category_id: row.category_id,
 						unit_rate: toCreateMoneyValue(row._unitRateInput),
 						surcharge: toCreateMoneyValue(row._surchargeInput),
 						effective_date: row._selectedEffectiveDate,
-					}),
-				});
-				if (!response.ok) {
-					const payload = (await response.json().catch(() => ({}))) as { detail?: string };
-					setError(payload.detail ?? `Không lưu được loại mặt hàng "${row.category_name}"`);
-					return;
-				}
+					})),
+				}),
+			});
+			if (redirectToLoginIfUnauthorized(response)) {
+				return;
 			}
-			await loadRateCards(selectedAccountId);
-			toast.success("Đã lưu bảng giá cước");
+			const batchPayload = (await response.json().catch(() => ({}))) as {
+				detail?: string;
+				data?: Array<{
+					category_id?: string;
+					unit_rate?: unknown;
+					surcharge?: unknown;
+					effective_date?: string | null;
+				}>;
+			};
+			if (!response.ok) {
+				setError(
+					typeof batchPayload.detail === "string"
+						? batchPayload.detail
+						: "Không lưu được bảng giá cước"
+				);
+				return;
+			}
+			// GET lại để đồng bộ với giá/ngày đang hiệu lực (batch có thể trả bản ghi áp dụng tương lai).
+			const refreshed = await loadRateCards(selectedAccountId);
+			if (refreshed) {
+				toast.success("Đã lưu bảng giá cước");
+			} else {
+				toast.warning(
+					"Đã lưu thành công nhưng không tải lại được bảng giá. Vui lòng tải lại trang hoặc chọn lại tài khoản."
+				);
+			}
 		} catch {
 			setError("Không thể kết nối máy chủ");
 		} finally {
