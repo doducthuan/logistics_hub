@@ -62,7 +62,7 @@ fastapi==0.128.8
     # via
     #   app
     #   sentry-sdk
-fastapi-cli==0.0.21
+fastapi-cli==0.0.24
     # via fastapi
 fastapi-cloud-cli==0.11.0
     # via fastapi-cli
