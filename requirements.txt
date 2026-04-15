@@ -111,7 +111,7 @@ more-itertools==10.8.0
     # via cssutils
 premailer==3.10.0
     # via emails
-psycopg==3.3.2
+psycopg==3.3.3
     # via app
 psycopg-binary==3.3.2 ; implementation_name != 'pypy'
     # via psycopg
