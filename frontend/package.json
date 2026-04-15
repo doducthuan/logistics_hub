@@ -48,7 +48,7 @@
     "@tiptap/extension-link": "2.14.0",
     "@tiptap/extension-placeholder": "2.14.0",
     "@tiptap/react": "2.14.0",
-    "@tiptap/starter-kit": "2.14.0",
+    "@tiptap/starter-kit": "3.21.0",
     "dayjs": "1.11.13",
     "embla-carousel": "8.6.0",
     "embla-carousel-react": "8.6.0",
